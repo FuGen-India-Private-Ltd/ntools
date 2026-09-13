@@ -1,0 +1,372 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --app-bg: #f5f5f7;
+    --app-card: rgba(255, 255, 255, 0.80);
+    --app-border: rgba(0, 0, 0, 0.08);
+    --app-text: #1d1d1f;
+    --app-muted: #86868b;
+  }
+
+  .dark {
+    --app-bg: #000000;
+    --app-card: rgba(24, 24, 27, 0.65);
+    --app-border: rgba(255, 255, 255, 0.12);
+    --app-text: #f5f5f7;
+    --app-muted: #a1a1a6;
+  }
+
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeSpeed;
+  }
+
+  body {
+    background-color: var(--app-bg);
+    color: var(--app-text);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    overflow-x: hidden;
+    touch-action: manipulation;
+  }
+
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Apple VisionOS & iPhone Pure Monochrome Liquid Glass Design System         */
+/* -------------------------------------------------------------------------- */
+
+.glass-panel,
+.liquid-glass {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.04);
+}
+
+.dark .glass-panel,
+.dark .liquid-glass {
+  background: #0d0d12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.60);
+}
+
+.glass-card,
+.liquid-glass-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+}
+
+.dark .glass-card,
+.dark .liquid-glass-card {
+  background: #111116;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.50);
+}
+
+.liquid-glass-dock {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.10);
+}
+
+.dark .liquid-glass-dock {
+  background: rgba(14, 14, 18, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 10px 35px 0 rgba(0, 0, 0, 0.85);
+}
+
+.glass-input,
+.liquid-glass-input {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  color: #1d1d1f;
+}
+
+.dark .glass-input,
+.dark .liquid-glass-input {
+  background: rgba(14, 14, 18, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.40);
+  color: #f5f5f7;
+}
+
+/* Liquid Glass Interactive Elements */
+.liquid-glass-btn {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.9), 0 2px 6px 0 rgba(0, 0, 0, 0.04);
+  color: #1d1d1f;
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.12s ease;
+}
+
+.liquid-glass-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 1), 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.liquid-glass-btn:active {
+  transform: scale(0.96) translateY(0);
+}
+
+.dark .liquid-glass-btn {
+  background: rgba(20, 20, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.12), 0 4px 12px 0 rgba(0, 0, 0, 0.60);
+  color: #f5f5f7;
+}
+
+.dark .liquid-glass-btn:hover {
+  background: rgba(28, 28, 36, 0.98);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.20), 0 6px 16px 0 rgba(0, 0, 0, 0.80);
+}
+
+/* Apple iOS 18 / VisionOS Vibrant Liquid Glass Primary Accent */
+.liquid-glass-accent {
+  background: linear-gradient(135deg, #0071e3 0%, #5856d6 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 6px 20px 0 rgba(88, 86, 214, 0.35);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-accent:hover {
+  background: linear-gradient(135deg, #007aff 0%, #6366f1 100%);
+  box-shadow: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.5), 0 8px 26px 0 rgba(88, 86, 214, 0.45);
+  transform: translateY(-1px);
+}
+
+.liquid-glass-accent:active {
+  transform: scale(0.96) translateY(0);
+}
+
+.dark .liquid-glass-accent {
+  background: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.5), 0 8px 28px 0 rgba(94, 92, 230, 0.45);
+}
+
+.dark .liquid-glass-accent:hover {
+  background: linear-gradient(135deg, #1e90ff 0%, #6f6cd9 100%);
+  box-shadow: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.6), 0 10px 32px 0 rgba(94, 92, 230, 0.55);
+}
+
+/* Vibrant Jewel Accents */
+.liquid-glass-emerald {
+  background: linear-gradient(135deg, #34c759 0%, #30b0c7 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 6px 20px 0 rgba(52, 199, 89, 0.35);
+}
+
+.liquid-glass-amber {
+  background: linear-gradient(135deg, #ff9500 0%, #ff3b30 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 6px 20px 0 rgba(255, 149, 0, 0.35);
+}
+
+.liquid-glass-rose {
+  background: linear-gradient(135deg, #ff2d55 0%, #af52de 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 6px 20px 0 rgba(255, 45, 85, 0.35);
+}
+
+.liquid-glass-purple {
+  background: linear-gradient(135deg, #af52de 0%, #5856d6 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 6px 20px 0 rgba(175, 82, 222, 0.35);
+}
+
+/* Authentic Liquid Specular Sheen (Curved Upper Rim Highlight) */
+.liquid-specular {
+  position: relative;
+}
+
+.liquid-specular::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 6%;
+  right: 6%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.90) 50%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 9999px;
+}
+
+.dark .liquid-specular::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.50) 50%, transparent 100%);
+}
+
+/* Ambient Aurora Mesh */
+.animate-liquid-orb-1,
+.animate-liquid-orb-2,
+.animate-liquid-orb-3 {
+  pointer-events: none;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom smooth scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #64748b40;
+  border-radius: 9999px;
+}
+
+/* Mobile safe area handling */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* -------------------------------------------------------------------------- */
+/* High-Speed Hardware-Accelerated Transition Animations                       */
+/* -------------------------------------------------------------------------- */
+
+@keyframes tabSwitchFadeScale {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-tab-switch {
+  animation: tabSwitchFadeScale 0.22s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes pageSlideInRight {
+  0% {
+    opacity: 0;
+    transform: translate3d(12px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pageSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translate3d(-12px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pageCrossFade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-page-slide-right {
+  animation: pageSlideInRight 0.20s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-page-slide-left {
+  animation: pageSlideInLeft 0.20s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-page-fade {
+  animation: pageCrossFade 0.18s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  will-change: opacity;
+}
+
+@keyframes toastSlideIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.animate-toast-in {
+  animation: toastSlideIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes scaleUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+

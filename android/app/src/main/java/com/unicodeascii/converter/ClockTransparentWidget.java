@@ -1,0 +1,46 @@
+package com.unicodeascii.converter;
+
+import android.app.PendingIntent;
+import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProvider;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.widget.RemoteViews;
+
+public class ClockTransparentWidget extends AppWidgetProvider {
+
+    @Override
+    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        for (int appWidgetId : appWidgetIds) {
+            updateAppWidget(context, appWidgetManager, appWidgetId);
+        }
+    }
+
+    public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        try {
+            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_clock_transparent);
+
+            int immutableFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                immutableFlags |= PendingIntent.FLAG_IMMUTABLE;
+            }
+
+            // Clicking opens Clock Tab
+            Intent openAppIntent = new Intent(context, MainActivity.class);
+            openAppIntent.setAction(Intent.ACTION_VIEW);
+            openAppIntent.setData(Uri.parse("app://unicodeascii.converter/#clock"));
+            openAppIntent.putExtra("route", "clock");
+            openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            PendingIntent openPending = PendingIntent.getActivity(context, 810, openAppIntent, immutableFlags);
+            views.setOnClickPendingIntent(R.id.widget_clock_trans_root, openPending);
+
+            // Pure transparent background
+            views.setInt(R.id.widget_clock_trans_root, "setBackgroundColor", android.graphics.Color.TRANSPARENT);
+
+            appWidgetManager.updateAppWidget(appWidgetId, views);
+        } catch (Exception ignored) {}
+    }
+}

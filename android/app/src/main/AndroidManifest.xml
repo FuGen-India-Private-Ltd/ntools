@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep linking filter for Widget shortcuts -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="app" android:host="unicodeascii.converter" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- High-Impact Full-Screen / Lockscreen Alarm Alert Overlay Dialog Activity -->
+        <activity
+            android:name=".AlarmAlertOverlayActivity"
+            android:theme="@style/Theme.AlarmOverlayDialog"
+            android:taskAffinity="com.unicodeascii.converter.alarm_alert"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:showForAllUsers="true"
+            android:launchMode="singleInstance"
+            android:exported="true" />
+
+        <!-- Task Reminder Overlay Dialog Activity -->
+        <activity
+            android:name=".TaskReminderOverlayActivity"
+            android:theme="@style/Theme.AlarmOverlayDialog"
+            android:taskAffinity="com.unicodeascii.converter.task_alert"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- 1. Quick Launch Multi-Tool AppWidget (4x1) -->
+        <receiver
+            android:name=".QuickLaunchWidget"
+            android:exported="true"
+            android:label="Quick Launch Suite">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_launch_info" />
+        </receiver>
+
+        <!-- 2. Single Kannada Converter AppWidget (2x1) -->
+        <receiver
+            android:name=".SingleToolWidget"
+            android:exported="true"
+            android:label="Kannada Converter">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_single_tool_info" />
+        </receiver>
+
+        <!-- 3. Tasks & To-Do AppWidget (Collection ListView with Checkboxes) -->
+        <receiver
+            android:name=".TasksWidget"
+            android:exported="true"
+            android:label="Tasks &amp; Focus">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.unicodeascii.converter.ACTION_COMPLETE_TASK" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_tasks_info" />
+        </receiver>
+
+        <!-- Service for Tasks Widget ListView Collection -->
+        <service
+            android:name=".TasksWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="true" />
+
+        <!-- 4. Clock & Alarms AppWidget (2x1 / 3x1) -->
+        <receiver
+            android:name=".ClockWidget"
+            android:exported="true"
+            android:label="Clock &amp; Alarms">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.unicodeascii.converter.ACTION_TOGGLE_NEXT_ALARM" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_clock_info" />
+        </receiver>
+
+        <!-- 4b. Transparent Adaptive Clock AppWidget (3x1) -->
+        <receiver
+            android:name=".ClockTransparentWidget"
+            android:exported="true"
+            android:label="Transparent Clock">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_clock_transparent_info" />
+        </receiver>
+
+        <!-- 4c. Dedicated Next Alarm AppWidget (3x1) -->
+        <receiver
+            android:name=".AlarmWidget"
+            android:exported="true"
+            android:label="Next Alarm">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.unicodeascii.converter.ACTION_TOGGLE_ALARM" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_alarm_info" />
+        </receiver>
+
+        <!-- 4d. Vertical Stacked Clock AppWidget (2x2) -->
+        <receiver
+            android:name=".ClockVerticalWidget"
+            android:exported="true"
+            android:label="Vertical Clock">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_clock_vertical_info" />
+        </receiver>
+
+        <!-- 5. Pomodoro Focus Timer AppWidget (2x1 / 4x1) -->
+        <receiver
+            android:name=".PomodoroWidget"
+            android:exported="true"
+            android:label="Focus Timer">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.unicodeascii.converter.ACTION_POMO_START" />
+                <action android:name="com.unicodeascii.converter.ACTION_POMO_PAUSE" />
+                <action android:name="com.unicodeascii.converter.ACTION_POMO_RESET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_pomodoro_info" />
+        </receiver>
+
+        <!-- 6. Rich Notes AppWidget (2x2 / 4x1) -->
+        <receiver
+            android:name=".NotesWidget"
+            android:exported="true"
+            android:label="Rich Notes">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_notes_info" />
+        </receiver>
+
+        <!-- 7. Calendar & Agenda Full Month AppWidget (4x3 / 4x4) -->
+        <receiver
+            android:name=".CalendarWidget"
+            android:exported="true"
+            android:label="Calendar Month View">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_calendar_info" />
+        </receiver>
+
+        <!-- 7b. Today's Date & Agenda AppWidget (4x1) -->
+        <receiver
+            android:name=".CalendarTodayWidget"
+            android:exported="true"
+            android:label="Today's Agenda &amp; Date">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_calendar_today_info" />
+        </receiver>
+
+        <!-- 8. Smart Calculator AppWidget (2x1 / 4x1) -->
+        <receiver
+            android:name=".CalculatorWidget"
+            android:exported="true"
+            android:label="Smart Calculator">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.unicodeascii.converter.ACTION_CALC_KEY" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_calculator_info" />
+        </receiver>
+
+        <!-- High-Priority Alarm Broadcast Receiver -->
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false" />
+
+        <!-- Task Reminder Broadcast Receiver for Exact Alarms -->
+        <receiver
+            android:name=".TaskReminderReceiver"
+            android:exported="false" />
+
+        <!-- Calendar & Birthday Prior-Day Reminder Receiver -->
+        <receiver
+            android:name=".CalendarReminderReceiver"
+            android:exported="false" />
+
+        <!-- Boot Receiver to Re-register Alarms after Device Restart -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+
+</manifest>

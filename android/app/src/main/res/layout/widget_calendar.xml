@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_calendar_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- Header: Month Name & App Icon -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_cal_month_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="August 2026"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📅"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:background="#334155" />
+
+    <!-- Days of Week Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S" android:textColor="#CBD5E1" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="M" android:textColor="#CBD5E1" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T" android:textColor="#CBD5E1" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="W" android:textColor="#CBD5E1" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T" android:textColor="#CBD5E1" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="F" android:textColor="#CBD5E1" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S" android:textColor="#CBD5E1" android:textSize="12sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Week 0 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView android:id="@+id/cell_0_0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_0_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_0_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_0_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_0_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_0_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_0_6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Week 1 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView android:id="@+id/cell_1_0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_1_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_1_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_1_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_1_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_1_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_1_6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Week 2 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView android:id="@+id/cell_2_0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_2_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_2_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_2_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_2_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_2_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_2_6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Week 3 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView android:id="@+id/cell_3_0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_3_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_3_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_3_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_3_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_3_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_3_6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Week 4 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView android:id="@+id/cell_4_0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_4_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_4_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_4_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_4_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_4_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_4_6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Week 5 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView android:id="@+id/cell_5_0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_5_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_5_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_5_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_5_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_5_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/cell_5_6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="12.5sp" android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>
