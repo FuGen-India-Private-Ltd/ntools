@@ -16,6 +16,7 @@ export interface AppWidgetSyncPluginInterface {
   checkExactAlarmPermission(): Promise<{ granted: boolean }>;
   requestExactAlarmPermission(): Promise<{ success: boolean }>;
   requestBatteryOptimizationExemption(): Promise<{ success: boolean }>;
+  checkBatteryOptimizationExempt(): Promise<{ isExempt: boolean }>;
   openAppDetailsSettings(): Promise<{ success: boolean }>;
   scheduleTimerAlarm(options: { seconds: number; label: string; id: string }): Promise<{ success: boolean }>;
   cancelTimerAlarm(options: { id: string }): Promise<{ success: boolean }>;
@@ -161,6 +162,18 @@ export async function requestExactAlarmPermissionNative(): Promise<void> {
     }
   } catch (e) {
     console.debug('Exact alarm permission request error:', e);
+  }
+}
+
+export async function checkBatteryOptimizationExemptNative(): Promise<boolean> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const res = await AppWidgetSync.checkBatteryOptimizationExempt();
+      return !!res?.isExempt;
+    }
+    return true;
+  } catch {
+    return true;
   }
 }
 

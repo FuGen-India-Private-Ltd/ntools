@@ -36,14 +36,8 @@ public class ClockVerticalWidget extends AppWidgetProvider {
             PendingIntent openPending = PendingIntent.getActivity(context, 815, openAppIntent, immutableFlags);
             views.setOnClickPendingIntent(R.id.widget_clock_vert_root, openPending);
 
-            // Apply theme customization
-            WidgetThemeHelper.applyTheme(
-                context,
-                views,
-                R.id.widget_clock_vert_root,
-                new int[]{R.id.widget_clock_vert_minutes},
-                null
-            );
+            // Pure transparent background
+            views.setInt(R.id.widget_clock_vert_root, "setBackgroundColor", android.graphics.Color.TRANSPARENT);
 
             appWidgetManager.updateAppWidget(appWidgetId, views);
         } catch (Exception ignored) {}

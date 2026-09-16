@@ -236,6 +236,20 @@ public class AppWidgetSyncPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void checkBatteryOptimizationExempt(PluginCall call) {
+        boolean isExempt = true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Context ctx = getContext();
+            String pkg = ctx != null ? ctx.getPackageName() : "com.unicodeascii.converter";
+            PowerManager pm = ctx != null ? (PowerManager) ctx.getSystemService(Context.POWER_SERVICE) : null;
+            isExempt = (pm != null) && pm.isIgnoringBatteryOptimizations(pkg);
+        }
+        JSObject ret = new JSObject();
+        ret.put("isExempt", isExempt);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void requestBatteryOptimizationExemption(PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Activity act = getActivity();

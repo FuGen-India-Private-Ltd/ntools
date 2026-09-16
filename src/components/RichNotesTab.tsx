@@ -7,7 +7,6 @@ import {
   searchAndFilterNotes,
   exportNoteAsPdf,
 } from '../lib/notesStorage';
-import { convertKannadaText } from '../lib/kannadaConverter';
 import { syncNotesToNative } from '../lib/widgetSyncBridge';
 import {
   StickyNote,
@@ -48,7 +47,6 @@ export function RichNotesTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [copiedFeedback, setCopiedFeedback] = useState(false);
-  const [sparkleFeedback, setSparkleFeedback] = useState(false);
   const [widgetPinnedNoteId, setWidgetPinnedNoteId] = useState<string | null>(() => {
     return localStorage.getItem('notes_widget_pinned_id');
   });
@@ -57,6 +55,17 @@ export function RichNotesTab() {
     saveStoredNotes(notes);
     syncNotesToNative(notes);
   }, [notes]);
+
+  useEffect(() => {
+    const handleOpenNote = (e: any) => {
+      const targetId = e.detail?.noteId;
+      if (targetId) {
+        setActiveNoteId(targetId);
+      }
+    };
+    window.addEventListener('open-specific-note', handleOpenNote);
+    return () => window.removeEventListener('open-specific-note', handleOpenNote);
+  }, []);
 
   const handleToggleWidgetPin = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -159,20 +168,6 @@ export function RichNotesTab() {
     );
   };
 
-  // 1-Tap Kannada script font converter injection for notes
-  const handleConvertKannadaInNote = () => {
-    if (!activeNote) return;
-    const { outputText: bodyOutput } = convertKannadaText(activeNote.content, 'auto');
-    const { outputText: titleOutput } = convertKannadaText(activeNote.title, 'auto');
-    handleUpdateActiveNote({
-      title: titleOutput || activeNote.title,
-      content: bodyOutput,
-      category: 'kannada',
-    });
-    setSparkleFeedback(true);
-    setTimeout(() => setSparkleFeedback(false), 2200);
-  };
-
   const handleInsertText = (prefix: string, suffix: string = '') => {
     if (!activeNote) return;
     const textarea = document.getElementById('noteContentArea') as HTMLTextAreaElement;
@@ -244,21 +239,6 @@ export function RichNotesTab() {
                 </option>
               ))}
             </select>
-
-            {/* 1-Tap Kannada Script Converter */}
-            <button
-              type="button"
-              onClick={handleConvertKannadaInNote}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
-                sparkleFeedback
-                  ? 'bg-emerald-500 text-white shadow-md'
-                  : 'liquid-glass-accent text-white shadow-sm'
-              }`}
-              title="Convert Nudi/Baraha ASCII to Unicode Kannada"
-            >
-              <Sparkles className={`w-3.5 h-3.5 ${sparkleFeedback ? 'animate-spin' : ''}`} />
-              <span>{sparkleFeedback ? 'Converted!' : 'ಕನ್ನಡ Converter'}</span>
-            </button>
 
             {/* Pin Toggle */}
             <button

@@ -14,22 +14,51 @@
         android:orientation="horizontal">
 
         <TextView
+            android:id="@+id/widget_note_badge"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="📝 Notes"
             android:textColor="#2DD4BF"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
+        <!-- Previous Note Button -->
         <TextView
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/btn_note_prev"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/widget_btn_bg"
+            android:gravity="center"
+            android:text="◀"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <!-- Next Note Button -->
+        <TextView
+            android:id="@+id/btn_note_next"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/widget_btn_bg"
+            android:gravity="center"
+            android:text="▶"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <!-- Add Note Button -->
+        <TextView
+            android:id="@+id/btn_note_add"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:background="@drawable/widget_btn_bg"
             android:gravity="center"
             android:text="+"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
     </LinearLayout>
 

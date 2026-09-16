@@ -10,6 +10,8 @@ import {
   Calendar,
   Layers,
   Settings,
+  Mic,
+  Compass,
 } from 'lucide-react';
 
 export type AppModule =
@@ -22,9 +24,9 @@ export type AppModule =
   | 'calc'
   | 'calendar'
   | 'widgets'
-  | 'settings'
   | 'recorder'
-  | 'compass';
+  | 'compass'
+  | 'settings';
 
 export interface ArcItem {
   id: AppModule;
@@ -45,6 +47,8 @@ export const ARC_ITEMS: ArcItem[] = [
   { id: 'calc', labelEn: 'Calc', labelKn: 'ಕ್ಯಾಲ್ಕ್', icon: Calculator, color: 'text-emerald-500', bgActive: 'bg-emerald-600 text-white' },
   { id: 'calendar', labelEn: 'Calendar', labelKn: 'ಕ್ಯಾಲೆಂಡರ್', icon: Calendar, color: 'text-sky-500', bgActive: 'bg-sky-600 text-white' },
   { id: 'widgets', labelEn: 'Widgets', labelKn: 'ವಿಜೆಟ್', icon: Layers, color: 'text-pink-500', bgActive: 'bg-pink-600 text-white' },
+  { id: 'recorder', labelEn: 'Recorder', labelKn: 'ಧ್ವನಿ', icon: Mic, color: 'text-rose-500', bgActive: 'bg-rose-600 text-white' },
+  { id: 'compass', labelEn: 'Compass', labelKn: 'ದಿಕ್ಸೂಚಿ', icon: Compass, color: 'text-emerald-500', bgActive: 'bg-emerald-600 text-white' },
   { id: 'settings', labelEn: 'Settings', labelKn: 'ಸೆಟ್ಟಿಂಗ್ಸ್', icon: Settings, color: 'text-slate-400', bgActive: 'bg-slate-700 text-white' },
 ];
 
@@ -169,7 +173,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
 
   return (
     <div
-      className={`arc-navigator-bar fixed bottom-1 sm:bottom-2 left-1/2 -translate-x-1/2 z-30 select-none touch-none flex flex-col items-center pointer-events-auto transition-all duration-150 ease-out ${
+      className={`arc-navigator-bar fixed bottom-6 sm:bottom-7 left-1/2 -translate-x-1/2 pb-[env(safe-area-inset-bottom,12px)] z-30 select-none touch-none flex flex-col items-center pointer-events-auto transition-all duration-150 ease-out ${
         isKeyboardOpen
           ? 'opacity-0 pointer-events-none translate-y-12'
           : 'opacity-100 translate-y-0'

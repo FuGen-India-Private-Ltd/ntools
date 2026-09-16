@@ -30,6 +30,7 @@ import {
   cancelTimerAlarmFromNative,
   testAlarmPopupNative,
   requestBatteryOptimizationExemptionNative,
+  checkBatteryOptimizationExemptNative,
   openAppDetailsSettingsNative,
 } from '../lib/widgetSyncBridge';
 import {
@@ -89,19 +90,26 @@ export function ClockSuiteTab() {
   });
   const [overlayGranted, setOverlayGranted] = useState<boolean>(true);
   const [exactAlarmGranted, setExactAlarmGranted] = useState<boolean>(true);
+  const [batteryExempt, setBatteryExempt] = useState<boolean>(true);
   const [testingPopup, setTestingPopup] = useState(false);
 
   const refreshPermissions = async () => {
     const overlay = await checkOverlayPermissionNative();
     const exact = await checkExactAlarmPermissionNative();
+    const exempt = await checkBatteryOptimizationExemptNative();
     setOverlayGranted(overlay);
     setExactAlarmGranted(exact);
+    setBatteryExempt(exempt);
   };
 
   useEffect(() => {
     refreshPermissions();
     window.addEventListener('focus', refreshPermissions);
-    return () => window.removeEventListener('focus', refreshPermissions);
+    window.addEventListener('permissions-updated', refreshPermissions);
+    return () => {
+      window.removeEventListener('focus', refreshPermissions);
+      window.removeEventListener('permissions-updated', refreshPermissions);
+    };
   }, []);
 
   const handleTestPopup = async () => {
@@ -809,109 +817,53 @@ export function ClockSuiteTab() {
                 </div>
               </div>
 
-              {/* Quick Nap Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 sm:pt-0">
-                <button
-                  type="button"
-                  onClick={() => handleQuickNapAlarm(15, 'Power Nap (15m)')}
-                  className="px-2.5 py-1.5 rounded-xl liquid-glass-btn text-[11px] font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap hover:text-black dark:hover:text-white active:scale-95 transition cursor-pointer"
-                  title="Set 15 minute quick nap alarm"
-                >
-                  ⚡ +15m Nap
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickNapAlarm(30, 'Power Nap (30m)')}
-                  className="px-2.5 py-1.5 rounded-xl liquid-glass-btn text-[11px] font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap hover:text-black dark:hover:text-white active:scale-95 transition cursor-pointer"
-                  title="Set 30 minute rest alarm"
-                >
-                  ⚡ +30m Rest
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickNapAlarm(45, 'Focus Block (45m)')}
-                  className="px-2.5 py-1.5 rounded-xl liquid-glass-btn text-[11px] font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap hover:text-black dark:hover:text-white active:scale-95 transition cursor-pointer"
-                  title="Set 45 minute focus alarm"
-                >
-                  ⚡ +45m Focus
-                </button>
+              {/* Status Indicator */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                  ● Scheduled
+                </span>
               </div>
             </div>
-          ) : (
-            <div className="p-3.5 rounded-3xl liquid-glass-card liquid-specular flex items-center justify-between gap-2 overflow-x-auto no-scrollbar shadow-sm">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                Quick Nap Presets:
-              </span>
-              <div className="flex items-center gap-1.5 shrink-0">
+          ) : null}
+
+          {/* Overnight Reliability & Battery Optimization Banner (Only shown if unexempted) */}
+          {!batteryExempt && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-500 shrink-0 mt-0.5">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                    Ensure Alarms Ring Overnight
+                  </h4>
+                  <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-tight mt-0.5">
+                    Allow unrestricted battery &amp; exact alarms so your phone's deep sleep mode doesn't silence morning alarms.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                 <button
                   type="button"
-                  onClick={() => handleQuickNapAlarm(15, 'Power Nap (15m)')}
-                  className="px-3 py-1.5 rounded-xl liquid-glass-btn text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white transition cursor-pointer"
+                  onClick={async () => {
+                    await requestBatteryOptimizationExemptionNative();
+                    await requestExactAlarmPermissionNative();
+                    window.dispatchEvent(new CustomEvent('app-toast', {
+                      detail: {
+                        id: `opt-${Date.now()}`,
+                        type: 'success',
+                        title: '⚡ Battery Optimization Settings Opened',
+                        description: 'Select "Unrestricted" or "Don\'t optimize" for nTools.',
+                      }
+                    }));
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold transition active:scale-95 shadow-sm cursor-pointer"
                 >
-                  +15m Nap
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickNapAlarm(30, 'Power Nap (30m)')}
-                  className="px-3 py-1.5 rounded-xl liquid-glass-btn text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white transition cursor-pointer"
-                >
-                  +30m Rest
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickNapAlarm(45, 'Focus Block (45m)')}
-                  className="px-3 py-1.5 rounded-xl liquid-glass-btn text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white transition cursor-pointer"
-                >
-                  +45m Focus
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickNapAlarm(60, '1-Hour Sleep')}
-                  className="px-3 py-1.5 rounded-xl liquid-glass-btn text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white transition cursor-pointer"
-                >
-                  +1h Sleep
+                  Allow Unrestricted
                 </button>
               </div>
             </div>
           )}
-
-          {/* Overnight Reliability & Battery Optimization Banner */}
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-            <div className="flex items-start gap-2.5">
-              <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-500 shrink-0 mt-0.5">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                  Ensure Alarms Ring Overnight
-                </h4>
-                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-tight mt-0.5">
-                  Allow unrestricted battery &amp; exact alarms so your phone's deep sleep mode doesn't silence morning alarms.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-              <button
-                type="button"
-                onClick={async () => {
-                  await requestBatteryOptimizationExemptionNative();
-                  await requestExactAlarmPermissionNative();
-                  window.dispatchEvent(new CustomEvent('app-toast', {
-                    detail: {
-                      id: `opt-${Date.now()}`,
-                      type: 'success',
-                      title: '⚡ Battery Optimization Settings Opened',
-                      description: 'Select "Unrestricted" or "Don\'t optimize" for nTools.',
-                    }
-                  }));
-                }}
-                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold transition active:scale-95 shadow-sm cursor-pointer"
-              >
-                Allow Unrestricted
-              </button>
-            </div>
-          </div>
 
           {/* Section Header */}
           <div className="flex items-center justify-between">

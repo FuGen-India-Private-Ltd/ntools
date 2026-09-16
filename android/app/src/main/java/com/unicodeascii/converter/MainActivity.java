@@ -15,13 +15,7 @@ public class MainActivity extends BridgeActivity {
         instance = this;
         registerPlugin(AppWidgetSyncPlugin.class);
         super.onCreate(savedInstanceState);
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
-                }
-            }
-        } catch (Exception ignored) {}
+        requestNeededPermissions();
         try {
             if (getBridge() != null && getBridge().getWebView() != null) {
                 android.webkit.WebView wv = getBridge().getWebView();
@@ -57,6 +51,48 @@ public class MainActivity extends BridgeActivity {
                 getBridge().getWebView().onResume();
             }
         } catch (Exception ignored) {}
+    }
+
+    private void requestNeededPermissions() {
+        try {
+            java.util.ArrayList<String> perms = new java.util.ArrayList<>();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    perms.add(android.Manifest.permission.POST_NOTIFICATIONS);
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    perms.add(android.Manifest.permission.RECORD_AUDIO);
+                }
+            }
+            if (!perms.isEmpty()) {
+                requestPermissions(perms.toArray(new String[0]), 101);
+            }
+
+            // Prompt battery optimization exemption on first launch if not already exempt
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                android.os.PowerManager pm = (android.os.PowerManager) getSystemService(android.content.Context.POWER_SERVICE);
+                if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    android.content.SharedPreferences prefs = getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+                    boolean hasAskedBattery = prefs.getBoolean("has_prompted_battery_opt", false);
+                    if (!hasAskedBattery) {
+                        prefs.edit().putBoolean("has_prompted_battery_opt", true).apply();
+                        Intent bIntent = new Intent(
+                            android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            android.net.Uri.parse("package:" + getPackageName())
+                        );
+                        startActivity(bIntent);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        dispatchJsEvent("permissions-updated");
     }
 
     private boolean isExitingFromBack = false;

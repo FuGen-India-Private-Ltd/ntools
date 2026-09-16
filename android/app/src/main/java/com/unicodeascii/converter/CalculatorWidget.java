@@ -15,6 +15,7 @@ public class CalculatorWidget extends AppWidgetProvider {
 
     public static final String ACTION_CALC_KEY = "com.unicodeascii.converter.ACTION_CALC_KEY";
     private static final String PREF_CALC_DISPLAY = "widget_calc_display_value";
+    private static final String PREF_JUST_EVALUATED = "widget_calc_just_evaluated";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -22,6 +23,9 @@ public class CalculatorWidget extends AppWidgetProvider {
 
         if (ACTION_CALC_KEY.equals(intent.getAction())) {
             String key = intent.getStringExtra("key");
+            if (key == null && intent.getData() != null) {
+                key = intent.getData().getQueryParameter("key");
+            }
             if (key != null) {
                 processKey(context, key);
             }
@@ -32,43 +36,49 @@ public class CalculatorWidget extends AppWidgetProvider {
         try {
             SharedPreferences prefs = context.getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);
             String current = prefs.getString(PREF_CALC_DISPLAY, "0");
+            boolean justEvaluated = prefs.getBoolean(PREF_JUST_EVALUATED, false);
 
             String next;
+            boolean nextJustEvaluated = false;
+
             if ("C".equalsIgnoreCase(key)) {
                 next = "0";
+                nextJustEvaluated = false;
             } else if ("=".equals(key)) {
                 next = evaluateExpression(current);
+                nextJustEvaluated = true;
             } else if ("+".equals(key) || "−".equals(key) || "-".equals(key) || "×".equals(key) || "*".equals(key) || "÷".equals(key) || "/".equals(key)) {
                 String opSymbol = "+";
                 if ("−".equals(key) || "-".equals(key)) opSymbol = "−";
                 else if ("×".equals(key) || "*".equals(key)) opSymbol = "×";
                 else if ("÷".equals(key) || "/".equals(key)) opSymbol = "÷";
 
-                if (current.equals("Error")) {
+                if ("Error".equals(current)) {
                     next = "0 " + opSymbol + " ";
                 } else if (current.endsWith(" + ") || current.endsWith(" − ") || current.endsWith(" × ") || current.endsWith(" ÷ ")) {
                     next = current.substring(0, current.length() - 3) + " " + opSymbol + " ";
                 } else {
                     next = current + " " + opSymbol + " ";
                 }
+                nextJustEvaluated = false;
             } else {
-                // Digits or dot
-                if ("0".equals(current) || "Error".equals(current)) {
-                    if (".".equals(key)) {
-                        next = "0.";
-                    } else {
-                        next = key;
-                    }
+                // Digits (0-9)
+                if (justEvaluated || "0".equals(current) || "Error".equals(current)) {
+                    next = key;
                 } else {
-                    if (current.length() < 22) {
+                    if (current.length() < 20) {
                         next = current + key;
                     } else {
                         next = current;
                     }
                 }
+                nextJustEvaluated = false;
             }
 
-            prefs.edit().putString(PREF_CALC_DISPLAY, next).apply();
+            prefs.edit()
+                .putString(PREF_CALC_DISPLAY, next)
+                .putBoolean(PREF_JUST_EVALUATED, nextJustEvaluated)
+                .apply();
 
             AppWidgetManager manager = AppWidgetManager.getInstance(context);
             ComponentName cn = new ComponentName(context, CalculatorWidget.class);
@@ -86,7 +96,6 @@ public class CalculatorWidget extends AppWidgetProvider {
             String sanitized = expr.replace("−", "-").replace("×", "*").replace("÷", "/").trim();
             if (sanitized.isEmpty() || sanitized.equals("0")) return "0";
 
-            // Simple 2-operand or chained evaluation
             String[] tokens = sanitized.split("\\s+");
             if (tokens.length == 0) return "0";
             if (tokens.length == 1) {
@@ -183,6 +192,8 @@ public class CalculatorWidget extends AppWidgetProvider {
             for (int i = 0; i < btnIds.length; i++) {
                 Intent keyIntent = new Intent(context, CalculatorWidget.class);
                 keyIntent.setAction(ACTION_CALC_KEY);
+                keyIntent.setPackage(context.getPackageName());
+                keyIntent.setData(Uri.parse("calc://key/" + i + "?key=" + Uri.encode(keys[i])));
                 keyIntent.putExtra("key", keys[i]);
                 PendingIntent pi = PendingIntent.getBroadcast(context, 1000 + i, keyIntent, immutableFlags);
                 views.setOnClickPendingIntent(btnIds[i], pi);

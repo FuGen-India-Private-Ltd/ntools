@@ -182,6 +182,34 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const handleHash = () => {
+      const rawHash = window.location.hash.replace(/^#/, '');
+      if (!rawHash) return;
+      const [routePart, queryPart] = rawHash.split('?');
+      const validModules: AppModule[] = [
+        'dashboard', 'converter', 'files', 'tasks', 'clock',
+        'notes', 'calc', 'calendar', 'widgets', 'recorder', 'compass', 'settings'
+      ];
+      if (validModules.includes(routePart as AppModule)) {
+        setActiveModule(routePart as AppModule);
+      }
+      if (routePart === 'notes' && queryPart) {
+        const params = new URLSearchParams(queryPart);
+        const noteId = params.get('noteId');
+        if (noteId) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('open-specific-note', { detail: { noteId } }));
+          }, 50);
+        }
+      }
+    };
+
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  useEffect(() => {
     const checkEntrancePermissions = async () => {
       const overlay = await checkOverlayPermissionNative();
       const exact = await checkExactAlarmPermissionNative();
@@ -433,6 +461,9 @@ export function App() {
     (window as any).handleAppBackButton = () => {
       // 1. Close Dial Tutorial modal if open
       if (isDialTutorialOpen) {
+        try {
+          localStorage.setItem('has_seen_dial_tutorial', 'true');
+        } catch (_) {}
         setIsDialTutorialOpen(false);
         return true;
       }
@@ -816,7 +847,12 @@ export function App() {
       {/* Arc Slider Interactive Tutorial Modal */}
       <ArcSliderTutorialModal
         isOpen={isDialTutorialOpen}
-        onClose={() => setIsDialTutorialOpen(false)}
+        onClose={() => {
+          try {
+            localStorage.setItem('has_seen_dial_tutorial', 'true');
+          } catch (_) {}
+          setIsDialTutorialOpen(false);
+        }}
       />
     </div>
   );

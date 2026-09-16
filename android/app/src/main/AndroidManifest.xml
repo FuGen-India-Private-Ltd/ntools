@@ -183,12 +183,23 @@
         </receiver>
 
         <!-- 6. Rich Notes AppWidget (2x2 / 4x1) -->
+        <activity
+            android:name=".NoteWidgetConfigureActivity"
+            android:theme="@style/Theme.AlarmOverlayDialog"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".NotesWidget"
             android:exported="true"
             android:label="Rich Notes">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.unicodeascii.converter.ACTION_PREV_NOTE" />
+                <action android:name="com.unicodeascii.converter.ACTION_NEXT_NOTE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -270,6 +281,7 @@
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.VIBRATE" />

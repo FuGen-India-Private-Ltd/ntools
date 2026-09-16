@@ -9,5 +9,6 @@
     android:previewLayout="@layout/widget_notes"
     android:initialLayout="@layout/widget_notes"
     android:resizeMode="horizontal|vertical"
+    android:configure="com.unicodeascii.converter.NoteWidgetConfigureActivity"
     android:widgetCategory="home_screen">
 </appwidget-provider>

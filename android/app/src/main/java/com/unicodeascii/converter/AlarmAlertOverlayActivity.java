@@ -160,7 +160,37 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         stopAlarmAudioAndVibration();
         cancelNotification();
         notifyAppAlarmDismissed();
-        finish();
+
+        try {
+            android.os.Vibrator v = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    v.vibrate(android.os.VibrationEffect.createOneShot(45, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    v.vibrate(45);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        if (sliderHint != null) {
+            sliderHint.setText("✓ Alarm Turned Off");
+            sliderHint.setTextColor(android.graphics.Color.parseColor("#10B981"));
+            sliderHint.setAlpha(1.0f);
+        }
+
+        View card = findViewById(R.id.overlay_dialog_card);
+        if (card != null) {
+            card.animate()
+                .alpha(0f)
+                .scaleX(0.88f)
+                .scaleY(0.88f)
+                .setDuration(260)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(this::finish)
+                .start();
+        } else {
+            finish();
+        }
     }
 
     private void performSnooze(long delayMillis) {

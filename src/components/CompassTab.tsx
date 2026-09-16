@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   Compass as CompassIcon,
   Sparkles,
@@ -15,6 +15,17 @@ export function CompassTab() {
   const [isSimulated, setIsSimulated] = useState<boolean>(false);
   const [showCalibrationHelp, setShowCalibrationHelp] = useState<boolean>(false);
 
+  // Smooth animation refs
+  const dialRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const targetHeadingRef = useRef<number>(0);
+  const currentRotationRef = useRef<number>(0);
+  const targetPitchRef = useRef<number>(0);
+  const currentPitchRef = useRef<number>(0);
+  const targetRollRef = useRef<number>(0);
+  const currentRollRef = useRef<number>(0);
+  const animFrameRef = useRef<number | null>(null);
+
   useEffect(() => {
     let sensorReceived = false;
 
@@ -29,16 +40,16 @@ export function CompassTab() {
       }
 
       if (rawHeading !== undefined && !isSimulated) {
-        setHeading(Math.round((rawHeading + 360) % 360));
+        targetHeadingRef.current = (rawHeading + 360) % 360;
         sensorReceived = true;
         setHasSensor(true);
       }
 
       if (e.beta !== null && !isSimulated) {
-        setPitch(Math.round(e.beta));
+        targetPitchRef.current = Math.round(e.beta);
       }
       if (e.gamma !== null && !isSimulated) {
-        setRoll(Math.round(e.gamma));
+        targetRollRef.current = Math.round(e.gamma);
       }
     };
 
@@ -48,15 +59,56 @@ export function CompassTab() {
 
     const timer = setTimeout(() => {
       if (!sensorReceived) {
-        // No hardware compass sensor reported; enable simulation mode so user can test UI
         setHasSensor(false);
       }
     }, 1500);
+
+    // Continuous 60/120 FPS Damped Animation Loop with Angle Unwrapping
+    let lastStateUpdate = 0;
+    const animate = (timestamp: number) => {
+      // 1. Angle Unwrapping for Smooth 360° Compass Rotation
+      const target = targetHeadingRef.current;
+      const current = currentRotationRef.current;
+      let diff = (target - (current % 360));
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+
+      // Smooth interpolation factor (0.15 for buttery damping without lag)
+      currentRotationRef.current += diff * 0.16;
+
+      // 2. Smooth Pitch & Roll for Spirit Level Bubble
+      currentPitchRef.current += (targetPitchRef.current - currentPitchRef.current) * 0.16;
+      currentRollRef.current += (targetRollRef.current - currentRollRef.current) * 0.16;
+
+      // Update DOM transform directly for 60/120 FPS performance
+      if (dialRef.current) {
+        dialRef.current.style.transform = `rotate(${-currentRotationRef.current}deg)`;
+      }
+      if (bubbleRef.current) {
+        const clampedX = Math.min(Math.max(currentRollRef.current * 2, -60), 60);
+        const clampedY = Math.min(Math.max(currentPitchRef.current * 2, -22), 22);
+        bubbleRef.current.style.transform = `translate(${clampedX}px, ${clampedY}px)`;
+      }
+
+      // Throttle React state updates to ~20Hz to prevent React rendering bottlenecks
+      if (timestamp - lastStateUpdate > 50) {
+        const normalizedHeading = Math.round(((currentRotationRef.current % 360) + 360) % 360);
+        setHeading(normalizedHeading);
+        setPitch(Math.round(currentPitchRef.current));
+        setRoll(Math.round(currentRollRef.current));
+        lastStateUpdate = timestamp;
+      }
+
+      animFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener('deviceorientationabsolute' as any, handleOrientation, true);
       window.removeEventListener('deviceorientation', handleOrientation, true);
       clearTimeout(timer);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [isSimulated]);
 
@@ -100,12 +152,18 @@ export function CompassTab() {
               <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                 Digital Compass &amp; Level
               </h2>
-              <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                Magnetic Sensor
-              </span>
+              {hasSensor ? (
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                  ● Sensor Active
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                  Manual Mode
+                </span>
+              )}
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              High-precision 360° heading, cardinal direction and 2-axis digital spirit level.
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              360° Magnetic Heading, Direction &amp; 2-Axis Surface Level
             </p>
           </div>
         </div>
@@ -113,25 +171,25 @@ export function CompassTab() {
         <button
           type="button"
           onClick={() => setShowCalibrationHelp(!showCalibrationHelp)}
-          className="p-2.5 rounded-2xl liquid-glass-btn text-slate-500 hover:text-emerald-500 active:scale-95 transition shrink-0 cursor-pointer"
+          className="p-2.5 rounded-2xl liquid-glass-btn text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white transition active:scale-95"
           title="Calibration Guide"
         >
           <HelpCircle className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Sensor notice / Calibration banner */}
+      {/* Calibration Guide Banner */}
       {showCalibrationHelp && (
-        <div className="p-4 rounded-3xl bg-emerald-500/10 border border-emerald-500/25 space-y-2 text-xs text-emerald-900 dark:text-emerald-200 animate-fadeIn">
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-900 dark:text-emerald-200 space-y-1.5 animate-fadeIn">
           <div className="flex items-center justify-between font-bold">
             <span className="flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-emerald-500" />
-              How to Calibrate Your Compass
+              Compass Accuracy Calibration
             </span>
             <button
               type="button"
               onClick={() => setShowCalibrationHelp(false)}
-              className="text-emerald-600 dark:text-emerald-400 hover:opacity-80"
+              className="text-emerald-600 dark:text-emerald-400 hover:opacity-80 cursor-pointer"
             >
               Close
             </button>
@@ -161,10 +219,10 @@ export function CompassTab() {
 
         {/* 360-Degree Rotating Compass Dial */}
         <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center select-none">
-          {/* Outer Ring Ticks */}
+          {/* Outer Ring Ticks - smooth RAF rotated */}
           <div
-            className="absolute inset-0 rounded-full border-2 border-dashed border-black/15 dark:border-white/20 transition-transform duration-200 ease-out"
-            style={{ transform: `rotate(${-heading}deg)` }}
+            ref={dialRef}
+            className="absolute inset-0 rounded-full border-2 border-dashed border-black/15 dark:border-white/20 will-change-transform"
           >
             {/* North Indicator */}
             <div className="absolute top-1 left-1/2 -translate-x-1/2 text-sm font-black text-rose-500">
@@ -230,19 +288,14 @@ export function CompassTab() {
               <div className="w-4 h-4 rounded-full border border-slate-400/40" />
             </div>
 
-            {/* Floating Level Bubble */}
+            {/* Floating Level Bubble - smooth RAF positioned */}
             <div
-              className={`absolute w-6 h-6 rounded-full transition-all duration-100 shadow-md ${
+              ref={bubbleRef}
+              className={`absolute w-6 h-6 rounded-full shadow-md will-change-transform ${
                 isLevel
                   ? 'bg-emerald-500 shadow-emerald-500/50'
                   : 'bg-amber-500 shadow-amber-500/50'
               }`}
-              style={{
-                transform: `translate(${Math.min(Math.max(roll * 2, -60), 60)}px, ${Math.min(
-                  Math.max(pitch * 2, -22),
-                  22
-                )}px)`,
-              }}
             />
           </div>
 
@@ -263,7 +316,7 @@ export function CompassTab() {
               <button
                 type="button"
                 onClick={requestSensorPermission}
-                className="text-[11px] font-bold text-emerald-500 hover:underline"
+                className="text-[11px] font-bold text-emerald-500 hover:underline cursor-pointer"
               >
                 Request Permission
               </button>
@@ -275,7 +328,9 @@ export function CompassTab() {
               value={heading}
               onChange={(e) => {
                 setIsSimulated(true);
-                setHeading(parseInt(e.target.value, 10));
+                const val = parseInt(e.target.value, 10);
+                targetHeadingRef.current = val;
+                setHeading(val);
               }}
               className="w-full accent-emerald-500"
             />
