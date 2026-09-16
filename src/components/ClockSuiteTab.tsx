@@ -876,6 +876,43 @@ export function ClockSuiteTab() {
             </div>
           )}
 
+          {/* Overnight Reliability & Battery Optimization Banner */}
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-start gap-2.5">
+              <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-500 shrink-0 mt-0.5">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  Ensure Alarms Ring Overnight
+                </h4>
+                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-tight mt-0.5">
+                  Allow unrestricted battery &amp; exact alarms so your phone's deep sleep mode doesn't silence morning alarms.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={async () => {
+                  await requestBatteryOptimizationExemptionNative();
+                  await requestExactAlarmPermissionNative();
+                  window.dispatchEvent(new CustomEvent('app-toast', {
+                    detail: {
+                      id: `opt-${Date.now()}`,
+                      type: 'success',
+                      title: '⚡ Battery Optimization Settings Opened',
+                      description: 'Select "Unrestricted" or "Don\'t optimize" for nTools.',
+                    }
+                  }));
+                }}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold transition active:scale-95 shadow-sm cursor-pointer"
+              >
+                Allow Unrestricted
+              </button>
+            </div>
+          </div>
+
           {/* Section Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

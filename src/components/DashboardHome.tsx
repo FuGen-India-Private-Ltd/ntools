@@ -12,11 +12,15 @@ import {
   Search,
   ArrowUpRight,
   ListTodo,
+  Mic,
+  Compass,
+  Sparkles,
 } from 'lucide-react';
 
 interface DashboardHomeProps {
   onNavigate: (module: AppModule) => void;
   lang: 'en' | 'kn';
+  onOpenTutorial?: () => void;
 }
 
 interface ToolCard {
@@ -139,6 +143,32 @@ const TOOLS_LIST: ToolCard[] = [
     glowColor: 'group-hover:shadow-pink-500/20',
   },
   {
+    id: 'recorder',
+    titleEn: 'Voice Recorder & Audio',
+    titleKn: 'ಧ್ವನಿ ರೆಕಾರ್ಡರ್',
+    subtitleEn: 'HD Audio Notes, Real-Time Waveform & Instant Export',
+    subtitleKn: 'ಧ್ವನಿ ರೆಕಾರ್ಡಿಂಗ್ & ಹಂಚಿಕೆ',
+    keywords: ['voice', 'recorder', 'audio', 'mic', 'recording', 'notes', 'sound', 'dictaphone'],
+    icon: Mic,
+    iconBg: 'bg-rose-500/15 dark:bg-rose-500/20',
+    iconColor: 'text-rose-500',
+    borderColor: 'hover:border-rose-500/50',
+    glowColor: 'group-hover:shadow-rose-500/20',
+  },
+  {
+    id: 'compass',
+    titleEn: 'Digital Compass & Level',
+    titleKn: 'ದಿಕ್ಸೂಚಿ & ಮಟ್ಟ',
+    subtitleEn: '360° Magnetic Heading, Direction & Spirit Level',
+    subtitleKn: 'ದಿಕ್ಸೂಚಿ & ಮೇಲ್ಮೈ ಮಟ್ಟ',
+    keywords: ['compass', 'direction', 'north', 'level', 'spirit level', 'heading', 'degrees', 'navigation'],
+    icon: Compass,
+    iconBg: 'bg-emerald-500/15 dark:bg-emerald-500/20',
+    iconColor: 'text-emerald-500',
+    borderColor: 'hover:border-emerald-500/50',
+    glowColor: 'group-hover:shadow-emerald-500/20',
+  },
+  {
     id: 'settings',
     titleEn: 'Settings & Privacy Hub',
     titleKn: 'ಸೆಟ್ಟಿಂಗ್ಸ್ & ಗೌಪ್ಯತೆ',
@@ -153,7 +183,11 @@ const TOOLS_LIST: ToolCard[] = [
   },
 ];
 
-export const DashboardHome = React.memo(function DashboardHome({ onNavigate, lang }: DashboardHomeProps) {
+export const DashboardHome = React.memo(function DashboardHome({
+  onNavigate,
+  lang,
+  onOpenTutorial,
+}: DashboardHomeProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredTools = TOOLS_LIST.filter((tool) => {
@@ -197,6 +231,27 @@ export const DashboardHome = React.memo(function DashboardHome({ onNavigate, lan
           </button>
         )}
       </div>
+
+      {/* Quick Dial Slider Guide Banner */}
+      {onOpenTutorial && (
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/25">
+          <div className="flex items-center gap-2.5 text-xs text-indigo-900 dark:text-indigo-200">
+            <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
+            <span className="font-semibold text-[11.5px] sm:text-xs">
+              {lang === 'kn'
+                ? 'ಕೆಳಗಿನ ಸ್ಲೈಡರ್ ಬಾರ್ ಅನ್ನು ಸುಲಭವಾಗಿ ಬಳಸುವುದು ಹೇಗೆಂದು ತಿಳಿಯಿರಿ'
+                : 'Learn how to navigate smoothly with the bottom arc slider'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenTutorial}
+            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition active:scale-95 shrink-0 shadow-sm cursor-pointer"
+          >
+            {lang === 'kn' ? 'ಮಾರ್ಗದರ್ಶಿ' : 'View Guide'}
+          </button>
+        </div>
+      )}
 
       {/* Expanded Modern Bento Grid: Full Tool Names with Staggered Fade-in */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3.5">

@@ -319,6 +319,7 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         intent.putExtra("alarmId", alarmId);
         intent.putExtra("alarmLabel", alarmLabel + " (Snoozed)");
         intent.putExtra("alarmTime", alarmTime);
+        intent.putExtra("alarmSound", alarmSound);
 
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
@@ -326,11 +327,20 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         PendingIntent pi = PendingIntent.getBroadcast(this, (alarmId + "_snooze").hashCode(), intent, flags);
         long triggerAt = System.currentTimeMillis() + delayMillis;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Intent showIntent = new Intent(this, MainActivity.class);
+            showIntent.putExtra("route", "clock");
+            PendingIntent showPI = PendingIntent.getActivity(this, (alarmId + "_snooze_show").hashCode(), showIntent, flags);
+            alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAt, showPI), pi);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
         } else {
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
         }
+
+        try {
+            BootReceiver.rescheduleAllClockAlarms(this);
+        } catch (Exception ignored) {}
     }
 
     @Override

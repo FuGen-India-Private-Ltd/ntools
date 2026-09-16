@@ -59,6 +59,38 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception ignored) {}
     }
 
+    private boolean isExitingFromBack = false;
+
+    @Override
+    public void onBackPressed() {
+        if (isExitingFromBack) {
+            super.onBackPressed();
+            return;
+        }
+
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().evaluateJavascript(
+                "(function() { " +
+                "  if (typeof window.handleAppBackButton === 'function') { " +
+                "    return window.handleAppBackButton() ? 'true' : 'false'; " +
+                "  } " +
+                "  return 'false'; " +
+                "})()",
+                value -> {
+                    if (value == null || !"\"true\"".equals(value)) {
+                        runOnUiThread(() -> {
+                            isExitingFromBack = true;
+                            MainActivity.super.onBackPressed();
+                            isExitingFromBack = false;
+                        });
+                    }
+                }
+            );
+        } else {
+            super.onBackPressed();
+        }
+    }
+
     @Override
     public void onDestroy() {
         if (instance == this) {

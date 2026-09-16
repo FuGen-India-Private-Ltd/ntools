@@ -8,8 +8,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -28,14 +30,15 @@ public class BootReceiver extends BroadcastReceiver {
 
     public static void rescheduleAllClockAlarms(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);
-        String alarmsJson = prefs.getString(AppWidgetSyncPlugin.KEY_ALARMS, "[]");
+        String alarmsJsonStr = prefs.getString(AppWidgetSyncPlugin.KEY_ALARMS, "[]");
 
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) return;
 
+        long now = System.currentTimeMillis();
+
         try {
-            JSONArray arr = new JSONArray(alarmsJson);
-            long now = System.currentTimeMillis();
+            JSONArray arr = new JSONArray(alarmsJsonStr);
 
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject alarm = arr.getJSONObject(i);
@@ -51,18 +54,49 @@ public class BootReceiver extends BroadcastReceiver {
                     int hour = Integer.parseInt(timeParts[0]);
                     int min = Integer.parseInt(timeParts[1]);
 
-                    Calendar cal = Calendar.getInstance();
-                    cal.set(Calendar.HOUR_OF_DAY, hour);
-                    cal.set(Calendar.MINUTE, min);
-                    cal.set(Calendar.SECOND, 0);
-                    cal.set(Calendar.MILLISECOND, 0);
-
-                    // If time has passed today, schedule for tomorrow
-                    if (cal.getTimeInMillis() <= (now - 5000)) {
-                        cal.add(Calendar.DAY_OF_YEAR, 1);
+                    JSONArray daysArr = alarm.optJSONArray("days");
+                    List<Integer> daysList = new ArrayList<>();
+                    if (daysArr != null) {
+                        for (int d = 0; d < daysArr.length(); d++) {
+                            daysList.add(daysArr.getInt(d));
+                        }
                     }
 
-                    long triggerAt = cal.getTimeInMillis();
+                    Calendar targetCal = Calendar.getInstance();
+                    targetCal.set(Calendar.HOUR_OF_DAY, hour);
+                    targetCal.set(Calendar.MINUTE, min);
+                    targetCal.set(Calendar.SECOND, 0);
+                    targetCal.set(Calendar.MILLISECOND, 0);
+
+                    if (daysList.isEmpty()) {
+                        // If time has passed today, schedule for tomorrow
+                        if (targetCal.getTimeInMillis() <= (now - 5000)) {
+                            targetCal.add(Calendar.DAY_OF_YEAR, 1);
+                        }
+                    } else {
+                        boolean found = false;
+                        for (int daysAhead = 0; daysAhead < 7; daysAhead++) {
+                            Calendar checkCal = Calendar.getInstance();
+                            checkCal.setTimeInMillis(now);
+                            checkCal.add(Calendar.DAY_OF_YEAR, daysAhead);
+                            checkCal.set(Calendar.HOUR_OF_DAY, hour);
+                            checkCal.set(Calendar.MINUTE, min);
+                            checkCal.set(Calendar.SECOND, 0);
+                            checkCal.set(Calendar.MILLISECOND, 0);
+
+                            int jsDayOfWeek = checkCal.get(Calendar.DAY_OF_WEEK) - 1;
+                            if (daysList.contains(jsDayOfWeek) && checkCal.getTimeInMillis() > (now - 5000)) {
+                                targetCal = checkCal;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            targetCal.add(Calendar.DAY_OF_YEAR, 7);
+                        }
+                    }
+
+                    long triggerAt = targetCal.getTimeInMillis();
 
                     // 1. Actual Alarm Intent
                     Intent alarmIntent = new Intent(context, AlarmReceiver.class);
@@ -76,8 +110,13 @@ public class BootReceiver extends BroadcastReceiver {
 
                     PendingIntent pi = PendingIntent.getBroadcast(context, id.hashCode(), alarmIntent, flags);
 
+                    Intent showIntent = new Intent(context, MainActivity.class);
+                    showIntent.putExtra("route", "clock");
+                    showIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    PendingIntent showPI = PendingIntent.getActivity(context, (id + "_show").hashCode(), showIntent, flags);
+
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(triggerAt, pi);
+                        AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(triggerAt, showPI);
                         alarmManager.setAlarmClock(info, pi);
                     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);

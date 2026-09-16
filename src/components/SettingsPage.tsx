@@ -25,6 +25,7 @@ interface SettingsPageProps {
   onThemeChange: (dark: boolean) => void;
   defaultTool?: 'converter' | 'pdf';
   onDefaultToolChange?: (tool: 'converter' | 'pdf') => void;
+  onOpenTutorial?: () => void;
 }
 
 export function SettingsPage({
@@ -34,6 +35,7 @@ export function SettingsPage({
   onThemeChange,
   defaultTool,
   onDefaultToolChange,
+  onOpenTutorial,
 }: SettingsPageProps) {
   const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>(() => {
     return (localStorage.getItem('kannada_fontsize') as 'sm' | 'md' | 'lg') || 'md';
@@ -298,7 +300,30 @@ export function SettingsPage({
         )}
       </div>
 
-      {/* 3. Reset Settings */}
+      {/* 3. Navigation Dial Tutorial */}
+      {onOpenTutorial && (
+        <div className="rounded-3xl liquid-glass-card border border-black/10 dark:border-white/10 p-5 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                Navigation Dial Tutorial
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                View the interactive guide on how to drag, tap, and navigate with the circular arc slider.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenTutorial}
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition active:scale-95 cursor-pointer shrink-0"
+            >
+              View Guide
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Reset Settings */}
       <div className="pt-2 flex justify-end">
         <button
           type="button"

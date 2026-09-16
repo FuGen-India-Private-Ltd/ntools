@@ -22,7 +22,9 @@ export type AppModule =
   | 'calc'
   | 'calendar'
   | 'widgets'
-  | 'settings';
+  | 'settings'
+  | 'recorder'
+  | 'compass';
 
 export interface ArcItem {
   id: AppModule;

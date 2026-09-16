@@ -23,7 +23,9 @@ export type AppModule =
   | 'calc'
   | 'calendar'
   | 'widgets'
-  | 'settings';
+  | 'settings'
+  | 'recorder'
+  | 'compass';
 
 interface FloatingDockProps {
   activeModule: AppModule;

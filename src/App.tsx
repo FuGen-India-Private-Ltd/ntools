@@ -28,6 +28,9 @@ import { RichNotesTab } from './components/RichNotesTab';
 import { CalendarPlannerTab } from './components/CalendarPlannerTab';
 import { WidgetStudioTab } from './components/WidgetStudioTab';
 import { SettingsPage } from './components/SettingsPage';
+import { VoiceRecorderTab } from './components/VoiceRecorderTab';
+import { CompassTab } from './components/CompassTab';
+import { ArcSliderTutorialModal } from './components/ArcSliderTutorialModal';
 import {
   Sun,
   Moon,
@@ -46,6 +49,8 @@ import {
   Calendar,
   Sliders,
   Settings,
+  Mic,
+  Compass,
 } from 'lucide-react';
 import { getNextActiveAlarmDetails } from './lib/timeAndClock';
 
@@ -63,6 +68,8 @@ const MODULE_METADATA: Record<
   calendar: { titleEn: 'Planner & Holidays', titleKn: 'ಕ್ಯಾಲೆಂಡರ್', icon: Calendar, colorClass: 'text-sky-500' },
   widgets: { titleEn: 'Widget Studio', titleKn: 'ವಿಜೆಟ್ ಸ್ಟುಡಿಯೋ', icon: Sliders, colorClass: 'text-pink-500' },
   settings: { titleEn: 'Preferences', titleKn: 'ಸೆಟ್ಟಿಂಗ್ಸ್', icon: Settings, colorClass: 'text-slate-500' },
+  recorder: { titleEn: 'Voice Recorder', titleKn: 'ಧ್ವನಿ ರೆಕಾರ್ಡರ್', icon: Mic, colorClass: 'text-rose-500' },
+  compass: { titleEn: 'Compass & Level', titleKn: 'ದಿಕ್ಸೂಚಿ & ಮಟ್ಟ', icon: Compass, colorClass: 'text-emerald-500' },
 };
 
 const TAB_ORDER: AppModule[] = [
@@ -76,6 +83,8 @@ const TAB_ORDER: AppModule[] = [
   'calendar',
   'widgets',
   'settings',
+  'recorder',
+  'compass',
 ];
 
 export function App() {
@@ -122,6 +131,13 @@ export function App() {
   const [hasOverlayPermission, setHasOverlayPermission] = useState<boolean>(true);
   const [hasExactAlarmPermission, setHasExactAlarmPermission] = useState<boolean>(true);
   const [isTestingModalPopup, setIsTestingModalPopup] = useState<boolean>(false);
+  const [isDialTutorialOpen, setIsDialTutorialOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('has_seen_dial_tutorial') !== 'true';
+    } catch {
+      return false;
+    }
+  });
 
   // Live active alarm preview for the top navigation bar
   const [activeAlarmPreview, setActiveAlarmPreview] = useState<{
@@ -407,6 +423,50 @@ export function App() {
       });
     });
   }, [startTransition]);
+
+  // --------------------------------------------------------------------------
+  // Android Hardware / Gesture Back Navigation & Double-Tap Exit
+  // --------------------------------------------------------------------------
+  const lastBackPressRef = useRef<number>(0);
+
+  useEffect(() => {
+    (window as any).handleAppBackButton = () => {
+      // 1. Close Dial Tutorial modal if open
+      if (isDialTutorialOpen) {
+        setIsDialTutorialOpen(false);
+        return true;
+      }
+
+      // 2. Close active ringing alarm modal if open
+      if (activeRingingAlarm) {
+        setActiveRingingAlarm(null);
+        return true;
+      }
+
+      // 3. If on any tool / subpage, navigate back to 'dashboard' (Home)
+      if (activeModuleRef.current !== 'dashboard') {
+        handleSelectModule('dashboard');
+        return true;
+      }
+
+      // 4. If already on dashboard, check for double-tap to exit within 2000ms
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        return false; // Let Android exit / minimize
+      }
+      lastBackPressRef.current = now;
+      setToasts((prev) => [
+        {
+          id: `exit-toast-${now}`,
+          type: 'info',
+          title: lang === 'kn' ? 'ನಿರ್ಗಮಿಸಲು ಮತ್ತೆ ಹಿಂದಕ್ಕೆ ಒತ್ತಿರಿ' : 'Press back again to exit',
+          description: '',
+        },
+        ...prev.slice(0, 1),
+      ]);
+      return true;
+    };
+  }, [isDialTutorialOpen, activeRingingAlarm, handleSelectModule, lang]);
 
   const tabAnimClass =
     slideDirection === 'right'
@@ -709,7 +769,13 @@ export function App() {
         }`}
       >
         <div key={activeModule} className={tabAnimClass}>
-          {activeModule === 'dashboard' && <DashboardHome lang={lang} onNavigate={handleSelectModule} />}
+          {activeModule === 'dashboard' && (
+            <DashboardHome
+              lang={lang}
+              onNavigate={handleSelectModule}
+              onOpenTutorial={() => setIsDialTutorialOpen(true)}
+            />
+          )}
           {activeModule === 'converter' && <DualPaneConverter t={t} />}
           {activeModule === 'files' && <FilesHubTab />}
           {activeModule === 'tasks' && <TasksTab />}
@@ -718,6 +784,8 @@ export function App() {
           {activeModule === 'calc' && <SmartCalculatorTab />}
           {activeModule === 'calendar' && <CalendarPlannerTab />}
           {activeModule === 'widgets' && <WidgetStudioTab />}
+          {activeModule === 'recorder' && <VoiceRecorderTab />}
+          {activeModule === 'compass' && <CompassTab />}
           {activeModule === 'settings' && (
             <SettingsPage
               currentLang={lang}
@@ -732,6 +800,7 @@ export function App() {
                 setDefaultTool(tool);
                 localStorage.setItem('kannada_default_tool', tool);
               }}
+              onOpenTutorial={() => setIsDialTutorialOpen(true)}
             />
           )}
         </div>
@@ -742,6 +811,12 @@ export function App() {
         activeModule={activeModule}
         onSelectModule={handleSelectModule}
         lang={lang}
+      />
+
+      {/* Arc Slider Interactive Tutorial Modal */}
+      <ArcSliderTutorialModal
+        isOpen={isDialTutorialOpen}
+        onClose={() => setIsDialTutorialOpen(false)}
       />
     </div>
   );
