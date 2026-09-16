@@ -1734,49 +1734,54 @@ export function ClockSuiteTab() {
         </div>
       )}
 
-      {/* MINIMALIST ZEN PITCH BLACK OLED SCREEN (User requested: pure black screen with time remaining, pause and stop) */}
+      {/* MINIMALIST ZEN LIQUID GLASS SCREEN */}
       {isFocusZenOpen && (
-        <div className="fixed inset-0 z-[250] bg-black text-white flex flex-col items-center justify-between p-6 sm:p-10 select-none animate-fade-in overflow-hidden">
-          {/* Top subtle indicator */}
-          <div className="w-full flex items-center justify-between text-xs text-slate-400 max-w-md pt-2">
-            <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-[250] bg-black/95 backdrop-blur-2xl text-white flex flex-col items-center justify-between p-6 sm:p-10 select-none animate-fade-in overflow-hidden">
+          {/* Ambient background light orbs */}
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Top Liquid Glass Status Pill */}
+          <div className="w-full flex items-center justify-between text-xs text-slate-400 max-w-md pt-2 z-10">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full liquid-glass-capsule border border-white/15">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span className="font-bold tracking-wider uppercase text-[11px] text-slate-300">
+              <span className="font-bold tracking-wider uppercase text-[11px] text-slate-200">
                 Focus Session Active
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-300 px-3 py-1.5 rounded-full liquid-glass-capsule border border-white/15">
               <VolumeX className="w-3.5 h-3.5 text-rose-400" />
               <span>🔕 Notifications Silenced</span>
             </div>
           </div>
 
-          {/* Center: HUGE glowing time remaining */}
-          <div className="flex-1 flex flex-col items-center justify-center my-auto">
-            <div className="text-7xl sm:text-8xl md:text-9xl font-mono font-black tracking-tight text-white drop-shadow-[0_0_35px_rgba(255,255,255,0.25)]">
-              {focusTimeStr}
-            </div>
-            <div className="mt-4 text-xs sm:text-sm font-semibold text-slate-400 tracking-wide text-center">
-              {isFocusRunning ? 'Stay in the zone • Zero distractions' : 'Session Paused'}
-            </div>
-
-            {/* Allowed VIP Callers Summary Chip */}
-            {vipCallers.length > 0 && (
-              <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-400">
-                <PhoneCall className="w-3 h-3 text-emerald-400" />
-                <span>Allowed VIP Callers: {vipCallers.join(', ')}</span>
+          {/* Center: HUGE glowing time remaining inside a Liquid Glass Container */}
+          <div className="flex-1 flex flex-col items-center justify-center my-auto z-10">
+            <div className="p-8 sm:p-12 rounded-[40px] liquid-glass-dock liquid-specular flex flex-col items-center justify-center border border-white/20 shadow-2xl backdrop-blur-3xl">
+              <div className="text-7xl sm:text-8xl md:text-9xl font-mono font-black tracking-tight text-white drop-shadow-[0_0_35px_rgba(255,255,255,0.3)]">
+                {focusTimeStr}
               </div>
-            )}
+              <div className="mt-3 text-xs sm:text-sm font-semibold text-slate-300 tracking-wide text-center">
+                {isFocusRunning ? 'Stay in the zone • Zero distractions' : 'Session Paused'}
+              </div>
+
+              {/* Allowed VIP Callers Summary Chip */}
+              {vipCallers.length > 0 && (
+                <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-[11px] text-slate-300">
+                  <PhoneCall className="w-3 h-3 text-emerald-400" />
+                  <span>Allowed VIP Callers: {vipCallers.join(', ')}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Bottom: Pause and Stop Controls */}
-          <div className="w-full max-w-xs flex flex-col items-center gap-3 pb-6">
+          <div className="w-full max-w-xs flex flex-col items-center gap-3 pb-6 z-10">
             <div className="w-full flex items-center justify-center gap-3">
               {isFocusRunning ? (
                 <button
                   type="button"
                   onClick={pauseFocusSession}
-                  className="flex-1 py-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm transition flex items-center justify-center gap-2 border border-white/15 cursor-pointer active:scale-95"
+                  className="flex-1 py-4 rounded-2xl liquid-glass-btn text-white font-bold text-sm transition flex items-center justify-center gap-2 border border-white/20 cursor-pointer active:scale-95"
                 >
                   <Pause className="w-5 h-5" />
                   <span>Pause</span>
@@ -1785,7 +1790,7 @@ export function ClockSuiteTab() {
                 <button
                   type="button"
                   onClick={resumeFocusSession}
-                  className="flex-1 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 cursor-pointer active:scale-95"
+                  className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 border border-white/30 cursor-pointer active:scale-95"
                 >
                   <Play className="w-5 h-5 fill-current" />
                   <span>Resume</span>
@@ -1795,7 +1800,7 @@ export function ClockSuiteTab() {
               <button
                 type="button"
                 onClick={stopFocusSession}
-                className="flex-1 py-4 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-sm transition flex items-center justify-center gap-2 border border-rose-500/30 cursor-pointer active:scale-95"
+                className="flex-1 py-4 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-sm transition flex items-center justify-center gap-2 border border-rose-500/40 backdrop-blur-md cursor-pointer active:scale-95"
               >
                 <Square className="w-5 h-5 fill-current" />
                 <span>Stop</span>
@@ -1805,7 +1810,7 @@ export function ClockSuiteTab() {
             <button
               type="button"
               onClick={() => setIsFocusZenOpen(false)}
-              className="text-[11px] text-slate-500 hover:text-slate-300 transition py-1 cursor-pointer"
+              className="text-[11px] text-slate-400 hover:text-slate-200 transition py-1 cursor-pointer"
             >
               Minimize &amp; Keep Running in Background
             </button>

@@ -1,6 +1,6 @@
 // Widget Customization & Styling Engine for Home Screen & In-App Widgets
 
-export type WidgetBgStyle = 'glass' | 'solid' | 'gradient' | 'mesh';
+export type WidgetBgStyle = 'liquid-glass' | 'glass' | 'solid' | 'gradient' | 'mesh';
 export type WidgetAccentColor =
   | 'monochrome'
   | 'titanium'
@@ -27,8 +27,8 @@ export interface WidgetCustomizationConfig {
 }
 
 export const DEFAULT_WIDGET_CONFIG: WidgetCustomizationConfig = {
-  bgStyle: 'solid',
-  opacity: 100,
+  bgStyle: 'liquid-glass',
+  opacity: 85,
   accentColor: 'indigo',
   typographyScale: 'standard',
   borderRadius: 'lg',

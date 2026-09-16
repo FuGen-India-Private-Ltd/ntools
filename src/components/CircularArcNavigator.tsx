@@ -179,14 +179,17 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
           : 'opacity-100 translate-y-0'
       }`}
     >
-      {/* Rotating Curved Circular Arc Dial Container */}
+      {/* Rotating Curved Circular Arc Dial Container with Liquid Glass Material */}
       <div
-        className="relative w-[280px] sm:w-[320px] h-[68px] px-4 rounded-[32px] bg-white/95 dark:bg-[#0d0d12]/95 border border-black/10 dark:border-white/15 shadow-xl flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden"
+        className="relative w-[284px] sm:w-[324px] h-[72px] px-4 rounded-[36px] liquid-glass-dock liquid-specular backdrop-blur-2xl bg-white/75 dark:bg-[#0b0e17]/70 border border-white/50 dark:border-white/16 shadow-[0_16px_40px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.85)] flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
+        {/* Ambient fluid glow under the active item */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-8 bg-indigo-500/20 dark:bg-indigo-400/25 blur-xl pointer-events-none rounded-full" />
+
         {/* Dynamic Rotating Items along the Circular Arc */}
         {ARC_ITEMS.map((item, i) => {
           const Icon = item.icon;
@@ -223,14 +226,14 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
                   ? 'none'
                   : 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.16s ease-out',
               }}
-              className="absolute top-1 flex flex-col items-center gap-0.5 select-none"
+              className="absolute top-1.5 flex flex-col items-center gap-0.5 select-none active:scale-95 transition-transform"
               title={label}
             >
               <div
-                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center transition-colors duration-150 border ${
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center transition-all duration-150 border ${
                   isActive
-                    ? 'bg-indigo-600 border-indigo-400 shadow-md text-white'
-                    : 'bg-black/5 dark:bg-white/10 text-slate-500 hover:text-black dark:text-slate-400 dark:hover:text-white border-black/10 dark:border-white/10'
+                    ? 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white border-white/40 shadow-[0_4px_16px_rgba(99,102,241,0.5),inset_0_1px_1px_rgba(255,255,255,0.6)]'
+                    : 'bg-white/40 dark:bg-white/6 backdrop-blur-md text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/12 border-black/5 dark:border-white/10 shadow-sm'
                 }`}
               >
                 <Icon
@@ -241,7 +244,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
               </div>
 
               <span
-                className={`text-[10px] font-black text-black dark:text-white px-2 py-0.2 rounded-full whitespace-nowrap drop-shadow-sm transition-opacity duration-150 ${
+                className={`text-[10px] font-bold tracking-tight text-slate-900 dark:text-white px-2 py-0.5 rounded-full whitespace-nowrap drop-shadow-sm transition-opacity duration-150 ${
                   isActive ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
               >

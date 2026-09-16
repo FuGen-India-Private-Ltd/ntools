@@ -8,6 +8,7 @@ import {
   saveStoredWidgetConfig,
 } from '../lib/widgetCustomizer';
 import { syncWidgetConfigToNative } from '../lib/widgetSyncBridge';
+import { evaluateMathExpression } from '../lib/mathEngine';
 import {
   Layers,
   Sliders,
@@ -111,20 +112,8 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
       setCalcDisplay('0');
     } else if (k === '=') {
       try {
-        const sanitized = calcDisplay.replace(/−/g, '-').replace(/×/g, '*').replace(/÷/g, '/');
-        // Simple 2-token evaluation
-        const parts = sanitized.trim().split(/\s+/);
-        if (parts.length === 3) {
-          const a = parseFloat(parts[0]);
-          const op = parts[1];
-          const b = parseFloat(parts[2]);
-          let res = 0;
-          if (op === '+') res = a + b;
-          else if (op === '-') res = a - b;
-          else if (op === '*') res = a * b;
-          else if (op === '/') res = b !== 0 ? a / b : 0;
-          setCalcDisplay(String(Math.round(res * 10000) / 10000));
-        }
+        const evalResult = evaluateMathExpression(calcDisplay);
+        setCalcDisplay(evalResult.result);
       } catch {
         setCalcDisplay('Error');
       }
@@ -154,9 +143,11 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
         return 'bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-slate-100';
       case 'mesh':
         return 'bg-gradient-to-tr from-slate-800/60 via-slate-900 to-slate-800/60 text-slate-100';
+      case 'liquid-glass':
+        return 'liquid-glass-dock liquid-specular backdrop-blur-3xl bg-slate-950/70 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.5)] text-slate-100';
       case 'glass':
       default:
-        return 'bg-slate-900/85 backdrop-blur-2xl text-slate-100';
+        return 'liquid-glass-card backdrop-blur-2xl bg-slate-900/80 border border-white/15 text-slate-100';
     }
   };
 
@@ -279,8 +270,8 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
                 <span>Material Style</span>
                 <span className="text-[10px] text-slate-500 capitalize">{config.bgStyle}</span>
               </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                {(['glass', 'solid', 'gradient', 'mesh'] as WidgetBgStyle[]).map((style) => (
+              <div className="grid grid-cols-5 gap-1.5">
+                {(['liquid-glass', 'glass', 'solid', 'gradient', 'mesh'] as WidgetBgStyle[]).map((style) => (
                   <button
                     key={style}
                     type="button"
@@ -291,7 +282,7 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
                         : 'liquid-glass-btn text-slate-600 dark:text-slate-300'
                     }`}
                   >
-                    {style}
+                    {style === 'liquid-glass' ? 'Liquid' : style}
                   </button>
                 ))}
               </div>

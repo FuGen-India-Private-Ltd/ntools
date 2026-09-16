@@ -61,27 +61,27 @@ public class WidgetThemeHelper {
             } else if ("gradient".equalsIgnoreCase(bgStyle) || "mesh".equalsIgnoreCase(bgStyle)) {
                 return Color.argb(alpha, 12, 12, 12);
             } else {
-                // Glass
-                return Color.argb(alpha, 0, 0, 0);
+                // Liquid Glass: translucent deep navy-black with high optical clarity
+                return Color.argb((int)(alpha * 0.75f), 12, 16, 26);
             }
         }
 
         public int getButtonBackgroundColorInt() {
-            int alpha = (int) Math.min(255, Math.max(50, (opacity * 255.0f) / 100.0f));
-            return Color.argb(Math.min(255, alpha + 30), 24, 24, 27); // zinc-900 dark button
+            int alpha = (int) Math.min(255, Math.max(40, (opacity * 255.0f) / 100.0f));
+            return Color.argb(alpha, 30, 36, 52); // translucent glass tile
         }
     }
 
     public static WidgetTheme getTheme(Context context) {
         WidgetTheme theme = new WidgetTheme();
-        theme.bgStyle = "solid";
-        theme.opacity = 100;
+        theme.bgStyle = "liquid-glass";
+        theme.opacity = 85;
         try {
             SharedPreferences prefs = context.getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);
             String jsonStr = prefs.getString(AppWidgetSyncPlugin.KEY_WIDGET_CONFIG, "{}");
             JSONObject obj = new JSONObject(jsonStr);
-            theme.bgStyle = obj.optString("bgStyle", "solid");
-            theme.opacity = obj.optInt("opacity", 100);
+            theme.bgStyle = obj.optString("bgStyle", "liquid-glass");
+            theme.opacity = obj.optInt("opacity", 85);
             theme.accentColor = obj.optString("accentColor", "indigo");
             theme.customColorHex = obj.optString("customColorHex", "");
             theme.typographyScale = obj.optString("typographyScale", "standard");
@@ -95,9 +95,15 @@ public class WidgetThemeHelper {
     public static void applyTheme(Context context, RemoteViews views, int rootId, int[] accentViewIds, int[] btnViewIds) {
         try {
             WidgetTheme theme = getTheme(context);
-            int bgColor = theme.getBackgroundColorInt(false);
             if (rootId != 0) {
-                views.setInt(rootId, "setBackgroundColor", bgColor);
+                if (theme.opacity <= 0) {
+                    views.setInt(rootId, "setBackgroundColor", Color.TRANSPARENT);
+                } else if ("solid".equalsIgnoreCase(theme.bgStyle)) {
+                    views.setInt(rootId, "setBackgroundColor", Color.BLACK);
+                } else {
+                    // Liquid Glass: preserve rounded corners and specular border drawable
+                    views.setInt(rootId, "setBackgroundResource", R.drawable.widget_bg);
+                }
             }
             int accentColor = theme.getAccentColorInt();
             if (accentViewIds != null) {
@@ -106,9 +112,12 @@ public class WidgetThemeHelper {
                 }
             }
             if (btnViewIds != null) {
-                int btnBgColor = theme.getButtonBackgroundColorInt();
                 for (int id : btnViewIds) {
-                    views.setInt(id, "setBackgroundColor", btnBgColor);
+                    if ("solid".equalsIgnoreCase(theme.bgStyle)) {
+                        views.setInt(id, "setBackgroundColor", Color.parseColor("#18181B"));
+                    } else {
+                        views.setInt(id, "setBackgroundResource", R.drawable.widget_btn_bg);
+                    }
                 }
             }
         } catch (Exception ignored) {}
