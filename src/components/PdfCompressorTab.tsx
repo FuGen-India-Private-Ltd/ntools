@@ -7,7 +7,7 @@ import {
   compressPdfFile,
 } from '../lib/pdfCompressor';
 import { formatFileSize } from '../lib/imageCompressor';
-import { saveAndDownloadFile } from '../lib/fileDownloader';
+import { saveAndDownloadFile, saveMultipleFilesToPhone, showToast } from '../lib/fileDownloader';
 import {
   FileText,
   UploadCloud,
@@ -16,149 +16,403 @@ import {
   Sliders,
   CheckCircle2,
   Loader2,
-  ArrowRight,
-  ShieldCheck,
-  Zap,
   Target,
-  Share2,
   FileEdit,
+  Plus,
+  Trash2,
+  Archive,
+  X,
+  AlertCircle,
+  RotateCcw,
+  TrendingDown,
 } from 'lucide-react';
 
 export interface PdfCompressorTabProps {
   onEditInEditor?: (blob: Blob, fileName: string) => void;
 }
 
+interface QueuedPdfCompressItem {
+  id: string;
+  file: File;
+  name: string;
+  originalSize: number;
+  status: 'queued' | 'compressing' | 'done' | 'error';
+  compressedSize?: number;
+  reductionPercentage?: number;
+  compressedBlob?: Blob;
+  error?: string;
+  pageCount?: number;
+}
+
 export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {}) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [queue, setQueue] = useState<QueuedPdfCompressItem[]>([]);
   const [compressionLevel, setCompressionLevel] = useState<PdfCompressionLevel>('medium');
   const [selectedTargetPreset, setSelectedTargetPreset] = useState<number | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
-  const [result, setResult] = useState<PdfCompressionResult | null>(null);
+  const [batchProgress, setBatchProgress] = useState(0);
+  const [currentProcessingName, setCurrentProcessingName] = useState('');
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        setSelectedFile(file);
-        setResult(null);
-      }
+      handleAddFiles(Array.from(e.dataTransfer.files));
     }
   };
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setResult(null);
+      handleAddFiles(Array.from(e.target.files));
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleAddFiles = (files: File[]) => {
+    setErrorMsg(null);
+    const pdfFiles = files.filter(
+      (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+    );
+
+    if (pdfFiles.length === 0) {
+      setErrorMsg('Please select valid PDF documents (.pdf).');
+      return;
+    }
+
+    const newItems: QueuedPdfCompressItem[] = pdfFiles.map((file) => ({
+      id: `pdf_comp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+      file,
+      name: file.name,
+      originalSize: file.size,
+      status: 'queued',
+    }));
+
+    setQueue((prev) => [...prev, ...newItems]);
+  };
+
+  const handleRemoveFile = (id: string) => {
+    setQueue((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleClearQueue = () => {
+    setQueue([]);
+    setErrorMsg(null);
+    setBatchProgress(0);
+    setCurrentProcessingName('');
+  };
+
+  const handleCompressAll = async () => {
+    if (queue.length === 0) return;
+    setIsCompressing(true);
+    setErrorMsg(null);
+    setBatchProgress(0);
+
+    const total = queue.length;
+
+    for (let i = 0; i < total; i++) {
+      const item = queue[i];
+      setCurrentProcessingName(item.name);
+
+      setQueue((prev) =>
+        prev.map((it, idx) => (idx === i ? { ...it, status: 'compressing' } : it))
+      );
+
+      try {
+        const res: PdfCompressionResult = await compressPdfFile(item.file, {
+          level: compressionLevel,
+          targetSizeKb: selectedTargetPreset || undefined,
+        });
+
+        setQueue((prev) =>
+          prev.map((it, idx) =>
+            idx === i
+              ? {
+                  ...it,
+                  status: 'done',
+                  compressedSize: res.compressedSize,
+                  reductionPercentage: res.reductionPercentage,
+                  compressedBlob: res.compressedBlob,
+                  pageCount: res.pageCount,
+                }
+              : it
+          )
+        );
+      } catch (err: any) {
+        console.error(`Failed to compress ${item.name}:`, err);
+        setQueue((prev) =>
+          prev.map((it, idx) =>
+            idx === i
+              ? {
+                  ...it,
+                  status: 'error',
+                  error: err?.message || 'Compression failed',
+                }
+              : it
+          )
+        );
+      }
+
+      setBatchProgress(Math.round(((i + 1) / total) * 100));
+    }
+
+    setIsCompressing(false);
+    setCurrentProcessingName('');
+    showToast('Batch Compression Complete', `All PDF files processed!`, 'success');
+  };
+
+  // Bulk Save All to Phone
+  const handleSaveAllToPhone = async () => {
+    const readyItems = queue.filter((item) => item.status === 'done' && item.compressedBlob);
+    if (readyItems.length === 0) return;
+
+    setIsSavingAll(true);
+    try {
+      const filesToSave = readyItems.map((item) => ({
+        blob: item.compressedBlob!,
+        fileName: `compressed_${item.name}`,
+      }));
+
+      await saveMultipleFilesToPhone(filesToSave, 'Compressed_PDFs.zip');
+    } catch (err: any) {
+      console.error('Failed to save compressed files:', err);
+      showToast('Export Error', err?.message || 'Failed to save compressed files', 'error');
+    } finally {
+      setIsSavingAll(false);
     }
   };
 
-  const handleCompress = async () => {
-    if (!selectedFile) return;
-    setIsCompressing(true);
-    try {
-      const res = await compressPdfFile(selectedFile, {
-        level: compressionLevel,
-        targetSizeKb: selectedTargetPreset || undefined,
-      });
-      setResult(res);
-    } catch (err: any) {
-      console.error('PDF compression failed:', err);
-      alert('Failed to compress PDF: ' + (err?.message || 'Invalid or encrypted PDF.'));
-    } finally {
-      setIsCompressing(false);
-    }
-  };
+  const doneItems = queue.filter((i) => i.status === 'done');
+  const totalOriginalBytes = doneItems.reduce((acc, i) => acc + i.originalSize, 0);
+  const totalCompressedBytes = doneItems.reduce((acc, i) => acc + (i.compressedSize || i.originalSize), 0);
+  const totalBytesSaved = Math.max(0, totalOriginalBytes - totalCompressedBytes);
+  const overallReduction =
+    totalOriginalBytes > 0 ? Math.round((totalBytesSaved / totalOriginalBytes) * 100) : 0;
 
   return (
-    <div className="space-y-4 pb-24 max-w-4xl mx-auto">
+    <div className="space-y-5 pb-24 max-w-5xl mx-auto">
       {/* Title Banner */}
       <div className="liquid-glass-card liquid-specular rounded-3xl p-5 flex items-center justify-between gap-3 flex-wrap border border-black/10 dark:border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-black/10 dark:bg-white/10 text-slate-900 dark:text-white flex items-center justify-center font-bold">
-            <FileText className="w-5 h-5" />
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shadow-sm border border-indigo-500/20">
+            <FileText className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
-              PDF Compressor & Optimizer
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Reduce PDF file size for portal uploads, job applications, and emails without losing readability.
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
+                Batch PDF Compressor &amp; Optimizer
+              </h2>
+              <span className="text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                Multi-File Batch
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Compress multiple PDF files in one go for portal uploads, job applications, and emails.
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="liquid-glass-accent inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md transition-all active:scale-95 cursor-pointer"
-        >
-          <UploadCloud className="w-4 h-4" />
-          <span>{selectedFile ? 'Change File' : 'Select PDF'}</span>
-        </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileSelected}
-          accept="application/pdf"
-          className="hidden"
-        />
+        {queue.length > 0 && !isCompressing && (
+          <button
+            type="button"
+            onClick={handleClearQueue}
+            className="px-3 py-1.5 rounded-xl liquid-glass-btn text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear Queue</span>
+          </button>
+        )}
       </div>
 
-      {/* Upload Dropzone */}
-      <div className="liquid-glass-card liquid-specular rounded-3xl p-5 sm:p-6 space-y-4">
-        {!selectedFile ? (
-          <div
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleFileDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-black/20 dark:border-white/20 hover:border-black/40 dark:hover:border-white/40 rounded-3xl p-8 text-center cursor-pointer transition bg-black/[0.02] dark:bg-white/[0.02] space-y-3 group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-black/10 dark:bg-white/10 text-slate-900 dark:text-white flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-              <UploadCloud className="w-6 h-6" />
+      {/* Error Alert */}
+      {errorMsg && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-rose-600 dark:text-rose-300 text-xs">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <p className="leading-relaxed">{errorMsg}</p>
+        </div>
+      )}
+
+      {/* Multi-File Upload Dropzone */}
+      <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleFileDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className="liquid-glass-card liquid-specular border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/60 rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition space-y-3 group"
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="application/pdf"
+          onChange={handleFileSelected}
+          className="hidden"
+        />
+
+        <div className="w-16 h-16 rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto group-hover:scale-105 transition-transform shadow-sm">
+          <UploadCloud className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-1">
+          <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-200">
+            {queue.length > 0 ? 'Add More PDF Documents' : 'Select or Drop Multiple PDF Files'}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Select 1 or multiple PDF files to compress simultaneously. 100% offline and secure on your device.
+          </p>
+        </div>
+
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full liquid-glass-btn text-[11px] font-bold text-slate-600 dark:text-slate-300">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+          <span>Batch mode: process 1 to 50+ PDFs at once</span>
+        </div>
+      </div>
+
+      {/* Queue View & Configuration */}
+      {queue.length > 0 && (
+        <div className="space-y-4">
+          {/* Active Compression Progress Bar */}
+          {isCompressing && (
+            <div className="p-5 rounded-3xl liquid-glass-card liquid-specular shadow-sm space-y-3 border border-indigo-500/20">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
+                  <span>Compressing: {currentProcessingName}</span>
+                </span>
+                <span className="font-mono">{batchProgress}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-cyan-500 transition-all duration-300"
+                  style={{ width: `${batchProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Queue List */}
+          <div className="p-5 rounded-3xl liquid-glass-card liquid-specular shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                Selected PDF Files ({queue.length})
+              </h3>
+              {!isCompressing && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add More Files</span>
+                </button>
+              )}
             </div>
 
-            <div>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                Select or Drop a PDF File
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Zero server upload. Processed 100% locally on your phone.
-              </p>
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {queue.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-3.5 rounded-2xl liquid-glass border border-black/5 dark:border-white/10 gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {item.name}
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-mono">
+                        Original: {formatFileSize(item.originalSize)}
+                        {item.compressedSize ? (
+                          <span className="text-emerald-500 font-bold ml-1.5">
+                            → {formatFileSize(item.compressedSize)} (-{item.reductionPercentage}%)
+                          </span>
+                        ) : null}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {item.status === 'queued' && (
+                      <span className="text-[11px] font-semibold text-slate-400 px-2.5 py-1 rounded-full bg-slate-500/10">
+                        Queued
+                      </span>
+                    )}
+                    {item.status === 'compressing' && (
+                      <span className="text-[11px] font-semibold text-indigo-500 px-2.5 py-1 rounded-full bg-indigo-500/10 flex items-center gap-1.5">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Optimizing...
+                      </span>
+                    )}
+                    {item.status === 'done' && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-emerald-500 px-2 py-0.5 rounded-full bg-emerald-500/10 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Saved {item.reductionPercentage}%
+                        </span>
+                        {item.compressedBlob && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              saveAndDownloadFile(
+                                item.compressedBlob!,
+                                `compressed_${item.name}`,
+                                'application/pdf'
+                              )
+                            }
+                            title="Download PDF"
+                            className="p-1.5 rounded-lg liquid-glass-btn text-indigo-500 hover:text-indigo-600 transition"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {item.compressedBlob && onEditInEditor && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onEditInEditor(
+                                item.compressedBlob!,
+                                `compressed_${item.name}`
+                              )
+                            }
+                            title="Open in PDF Editor"
+                            className="p-1.5 rounded-lg liquid-glass-btn text-blue-500 hover:text-blue-600 transition"
+                          >
+                            <FileEdit className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {item.status === 'error' && (
+                      <span className="text-[11px] font-semibold text-rose-500 px-2.5 py-1 rounded-full bg-rose-500/10 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Failed
+                      </span>
+                    )}
+
+                    {!isCompressing && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(item.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 transition cursor-pointer"
+                        title="Remove file"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {/* File Info Card */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl liquid-glass border border-black/10 dark:border-white/10">
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="w-6 h-6 text-slate-700 dark:text-slate-300 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                    {selectedFile.name}
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Original Size: {formatFileSize(selectedFile.size)}
-                  </p>
-                </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs font-bold text-slate-900 dark:text-white hover:underline px-2 shrink-0 cursor-pointer"
-              >
-                Change
-              </button>
-            </div>
-
-            {/* Quick Upload Target Limits */}
+          {/* Target Presets & Quality Options */}
+          <div className="p-5 rounded-3xl liquid-glass-card liquid-specular shadow-sm space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-                Quick Target Size Presets (Optional)
+              <label className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-indigo-500" />
+                Target Size Limits (Optional)
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {COMMON_TARGET_PRESETS.map((preset) => {
@@ -180,7 +434,11 @@ export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {})
                       }`}
                     >
                       <div className="text-xs font-bold">{preset.label}</div>
-                      <div className={`text-[10px] mt-0.5 ${isSelected ? 'opacity-90 font-semibold' : 'text-slate-400'}`}>
+                      <div
+                        className={`text-[10px] mt-0.5 ${
+                          isSelected ? 'opacity-90 font-semibold' : 'text-slate-400'
+                        }`}
+                      >
                         {preset.note}
                       </div>
                     </button>
@@ -189,10 +447,10 @@ export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {})
               </div>
             </div>
 
-            {/* Standard Compression Levels */}
+            {/* Standard Quality Levels */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
+              <label className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-indigo-500" />
                 Compression Quality
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -206,7 +464,7 @@ export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {})
                       onClick={() => setCompressionLevel(lvl)}
                       className={`p-3 rounded-2xl border cursor-pointer transition space-y-1 ${
                         isSelected
-                          ? 'liquid-glass-card border-black/30 dark:border-white/30 shadow-sm ring-1 ring-black/10 dark:ring-white/10'
+                          ? 'liquid-glass-card border-indigo-500/50 dark:border-indigo-400/50 shadow-sm ring-1 ring-indigo-500/20'
                           : 'liquid-glass-btn'
                       }`}
                     >
@@ -214,7 +472,7 @@ export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {})
                         <span className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase">
                           {lvl}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold border border-black/10 dark:border-white/10 liquid-glass">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold border border-black/10 dark:border-white/10 liquid-glass text-indigo-600 dark:text-indigo-400">
                           {info.estimatedSavings}
                         </span>
                       </div>
@@ -227,94 +485,101 @@ export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {})
               </div>
             </div>
 
-            {/* Compress Action Button */}
-            <button
-              type="button"
-              onClick={handleCompress}
-              disabled={isCompressing}
-              className="liquid-glass-accent w-full py-3 px-4 rounded-2xl text-xs font-bold shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-            >
-              {isCompressing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Compressing Document...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Compress PDF File Now</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Result Card */}
-      {result && (
-        <div className="liquid-glass-card liquid-specular rounded-3xl p-5 border border-black/15 dark:border-white/20 space-y-4 animate-fade-in">
-          <div className="flex items-center gap-3 p-3.5 rounded-2xl liquid-glass border border-black/10 dark:border-white/10">
-            <div className="w-9 h-9 rounded-2xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-bold shadow-md">
-              ✓
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                PDF Compressed Successfully!
-              </h3>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                {result.pageCount} page(s) • Reduced by {result.reductionPercentage}% ({formatFileSize(result.originalSize - result.compressedSize)} saved)
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl liquid-glass text-center border border-black/10 dark:border-white/10">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400">Original Size</span>
-              <div className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
-                {formatFileSize(result.originalSize)}
-              </div>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Compressed Size</span>
-              <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                {formatFileSize(result.compressedSize)}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                saveAndDownloadFile(
-                  result.compressedBlob,
-                  `compressed_${result.originalFileName}`,
-                  'application/pdf'
-                )
-              }
-              className="liquid-glass-accent flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download Compressed PDF</span>
-            </button>
-
-            {onEditInEditor && (
+            {/* Action Button */}
+            <div className="pt-2 flex justify-end">
               <button
                 type="button"
-                onClick={() =>
-                  onEditInEditor(
-                    result.compressedBlob,
-                    `compressed_${result.originalFileName}`
-                  )
-                }
-                className="liquid-glass-btn py-2.5 px-4 rounded-2xl text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-                title="Edit in PDF Editor"
+                onClick={handleCompressAll}
+                disabled={isCompressing || queue.length === 0}
+                className="liquid-glass-accent inline-flex items-center gap-2 px-7 py-3 rounded-2xl text-xs font-black shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                <FileEdit className="w-4 h-4 text-indigo-500" />
-                <span>Edit PDF</span>
+                {isCompressing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Compressing Batch...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>Compress All ({queue.length}) PDF Files</span>
+                  </>
+                )}
               </button>
-            )}
+            </div>
           </div>
+
+          {/* Results Summary Card */}
+          {doneItems.length > 0 && (
+            <div className="p-6 rounded-3xl liquid-glass-card liquid-specular shadow-sm space-y-4 border border-emerald-500/20">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-sm">
+                    <TrendingDown className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      Batch Compression Finished!
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {doneItems.length} of {queue.length} files compressed • Total saved:{' '}
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatFileSize(totalBytesSaved)} ({overallReduction}%)
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={handleSaveAllToPhone}
+                    disabled={isSavingAll || doneItems.length === 0}
+                    className="liquid-glass-accent flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingAll ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Archive className="w-3.5 h-3.5" />
+                    )}
+                    <span>Save All to Phone (ZIP)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleClearQueue}
+                    className="p-2.5 rounded-xl liquid-glass-btn text-slate-600 dark:text-slate-300 hover:text-slate-900 transition"
+                    title="Start New Batch"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Bar */}
+              <div className="grid grid-cols-3 gap-2.5 pt-2 text-center text-xs">
+                <div className="liquid-glass p-3 rounded-2xl border border-black/5 dark:border-white/10">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">Total Before</span>
+                  <p className="font-mono font-bold text-slate-700 dark:text-slate-300 mt-0.5">
+                    {formatFileSize(totalOriginalBytes)}
+                  </p>
+                </div>
+                <div className="liquid-glass p-3 rounded-2xl border border-black/5 dark:border-white/10">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">Total After</span>
+                  <p className="font-mono font-bold text-slate-900 dark:text-white mt-0.5">
+                    {formatFileSize(totalCompressedBytes)}
+                  </p>
+                </div>
+                <div className="liquid-glass p-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-bold">
+                    Space Saved
+                  </span>
+                  <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {formatFileSize(totalBytesSaved)} (-{overallReduction}%)
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

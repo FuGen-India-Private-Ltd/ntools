@@ -4,6 +4,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import JSZip from 'jszip';
 
 export interface DownloadResult {
   success: boolean;
@@ -172,6 +173,63 @@ export async function saveAndDownloadFile(
     return {
       success: false,
       message: errorMsg,
+    };
+  }
+}
+
+/**
+ * Saves multiple generated files into the public Documents/nTools/ folder,
+ * and also generates a ZIP archive for one-click downloading or sharing.
+ */
+export async function saveMultipleFilesToPhone(
+  files: { blob: Blob; fileName: string }[],
+  zipArchiveName = 'nTools_batch_export.zip',
+  subFolder?: string
+): Promise<{ success: boolean; message: string; zipBlob?: Blob }> {
+  if (!files || files.length === 0) {
+    return { success: false, message: 'No files provided for export.' };
+  }
+
+  try {
+    const isNative = Capacitor.isNativePlatform();
+
+    // 1. If on native Android, save each file individually into Documents/nTools/
+    if (isNative) {
+      for (const item of files) {
+        await saveAndDownloadFile(item.blob, item.fileName, undefined, subFolder);
+      }
+    }
+
+    // 2. Package all files into a ZIP archive using JSZip
+    const zip = new JSZip();
+    for (const item of files) {
+      const arrayBuffer = await item.blob.arrayBuffer();
+      zip.file(item.fileName, arrayBuffer);
+    }
+    const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+
+    // Download the ZIP archive (on web, or if user triggers archive)
+    if (!isNative) {
+      await saveAndDownloadFile(zipBlob, zipArchiveName, 'application/zip');
+    } else {
+      showToast(
+        'Batch Export Complete',
+        `All ${files.length} files saved to Documents/nTools/${subFolder ? subFolder + '/' : ''}`,
+        'success'
+      );
+    }
+
+    return {
+      success: true,
+      message: `Successfully saved ${files.length} files.`,
+      zipBlob,
+    };
+  } catch (err: any) {
+    console.error('Batch export failed:', err);
+    showToast('Batch Export Failed', err?.message || 'Failed to save multiple files', 'error');
+    return {
+      success: false,
+      message: err?.message || 'Batch export failed',
     };
   }
 }

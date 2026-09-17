@@ -5,8 +5,9 @@ import {
   parseExcelWorkbook,
   ExcelToPdfResult,
 } from '../lib/excelToPdfProcessor';
-import { saveAndDownloadFile } from '../lib/fileDownloader';
+import { saveAndDownloadFile, saveMultipleFilesToPhone, showToast } from '../lib/fileDownloader';
 import { formatFileSize } from '../lib/imageCompressor';
+import { PDFDocument } from 'pdf-lib';
 import {
   FileSpreadsheet,
   UploadCloud,
@@ -21,501 +22,624 @@ import {
   Sparkles,
   AlertCircle,
   FileCheck,
-  Eye,
   FileEdit,
+  Plus,
+  Trash2,
+  Archive,
+  X,
 } from 'lucide-react';
 
 export interface ExcelToPdfConverterProps {
   onEditInEditor?: (blob: Blob, fileName: string) => void;
 }
 
+interface QueuedExcelItem {
+  id: string;
+  file: File;
+  name: string;
+  sizeBytes: number;
+  type: 'xlsx' | 'csv';
+  status: 'queued' | 'converting' | 'done' | 'error';
+  sheets?: ExcelSheetData[];
+  selectedSheetIdx?: number;
+  resultBlob?: Blob;
+  resultFileName?: string;
+  sheetCount?: number;
+  totalRows?: number;
+  error?: string;
+}
+
 export function ExcelToPdfConverter({ onEditInEditor }: ExcelToPdfConverterProps = {}) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [sheets, setSheets] = useState<ExcelSheetData[]>([]);
-  const [selectedSheetIdx, setSelectedSheetIdx] = useState<number>(0);
+  const [queue, setQueue] = useState<QueuedExcelItem[]>([]);
   const [status, setStatus] = useState<'upload' | 'configured' | 'converting' | 'completed'>('upload');
-  const [progressPercent, setProgressPercent] = useState<number>(0);
-  const [progressStage, setProgressStage] = useState<string>('');
-  const [result, setResult] = useState<ExcelToPdfResult | null>(null);
+  const [batchProgress, setBatchProgress] = useState<number>(0);
+  const [currentProcessingName, setCurrentProcessingName] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Settings
+  // Layout Settings
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [pageSize, setPageSize] = useState<'a4' | 'letter'>('a4');
   const [includeGridLines, setIncludeGridLines] = useState(true);
+
+  // Bulk actions
+  const [isMergingAll, setIsMergingAll] = useState(false);
+  const [isSavingAll, setIsSavingAll] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleSelectFile(e.dataTransfer.files[0]);
+      handleAddFiles(Array.from(e.dataTransfer.files));
     }
   };
 
-  const handleSelectFile = async (file: File) => {
-    setErrorMsg(null);
-    setResult(null);
-    setSheets([]);
-    setProgressPercent(0);
-
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext === 'xls') {
-      setErrorMsg(
-        'Legacy binary Excel .xls (Office 97-2003) is not directly supported. Please save as modern .xlsx or export to .csv, then try again.'
-      );
-      setSelectedFile(null);
-      setStatus('upload');
-      return;
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleAddFiles(Array.from(e.target.files));
     }
-
-    if (ext !== 'xlsx' && ext !== 'csv') {
-      setErrorMsg('Please select an Excel spreadsheet (.xlsx) or CSV file (.csv).');
-      setSelectedFile(null);
-      setStatus('upload');
-      return;
-    }
-
-    setSelectedFile(file);
-    try {
-      const parsed = await parseExcelWorkbook(file);
-      if (parsed.length === 0) {
-        throw new Error('No readable data rows found in this spreadsheet.');
-      }
-      setSheets(parsed);
-      setSelectedSheetIdx(0);
-      setStatus('configured');
-    } catch (err: any) {
-      console.error('Failed to parse Excel file', err);
-      setErrorMsg(err?.message || 'Unable to parse spreadsheet sheets. Ensure file is not password-protected.');
-      setSelectedFile(null);
-      setStatus('upload');
-    }
-  };
-
-  const handleConvert = async () => {
-    if (!selectedFile) return;
-    setStatus('converting');
-    setErrorMsg(null);
-    setProgressPercent(20);
-    setProgressStage('Reading sheets, columns, and data rows...');
-
-    try {
-      await new Promise((r) => setTimeout(r, 120));
-      setProgressPercent(50);
-      setProgressStage('Formatting table grid and calculating cell widths...');
-
-      const res = await convertExcelToPdf(selectedFile, {
-        orientation,
-        pageSize,
-        includeGridLines,
-        selectedSheetIndex: selectedSheetIdx >= 0 ? selectedSheetIdx : undefined,
-      });
-
-      setProgressPercent(85);
-      setProgressStage('Rendering table borders and text...');
-      await new Promise((r) => setTimeout(r, 100));
-
-      setResult(res);
-      setProgressPercent(100);
-      setProgressStage('Spreadsheet PDF ready!');
-      await new Promise((r) => setTimeout(r, 150));
-      setStatus('completed');
-    } catch (err: any) {
-      console.error('Excel conversion failed', err);
-      setErrorMsg(err?.message || 'Failed to convert spreadsheet to PDF.');
-      setStatus('configured');
-    }
-  };
-
-  const handleReset = () => {
-    setSelectedFile(null);
-    setSheets([]);
-    setResult(null);
-    setErrorMsg(null);
-    setStatus('upload');
-    setProgressPercent(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const currentSheet = sheets[selectedSheetIdx] || sheets[0];
+  const handleAddFiles = async (files: File[]) => {
+    setErrorMsg(null);
+    const validItems: QueuedExcelItem[] = [];
+    const legacyFiles: string[] = [];
+    const unsupportedFiles: string[] = [];
+
+    for (const file of files) {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (ext === 'xls') {
+        legacyFiles.push(file.name);
+      } else if (ext === 'xlsx' || ext === 'csv') {
+        try {
+          const parsedSheets = await parseExcelWorkbook(file);
+          const totalRows = parsedSheets.reduce((sum, s) => sum + s.rowCount, 0);
+          validItems.push({
+            id: `excel_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+            file,
+            name: file.name,
+            sizeBytes: file.size,
+            type: ext as 'xlsx' | 'csv',
+            status: 'queued',
+            sheets: parsedSheets,
+            selectedSheetIdx: 0,
+            sheetCount: parsedSheets.length,
+            totalRows,
+          });
+        } catch {
+          validItems.push({
+            id: `excel_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+            file,
+            name: file.name,
+            sizeBytes: file.size,
+            type: ext as 'xlsx' | 'csv',
+            status: 'queued',
+            sheetCount: 1,
+            totalRows: 0,
+          });
+        }
+      } else {
+        unsupportedFiles.push(file.name);
+      }
+    }
+
+    if (legacyFiles.length > 0) {
+      setErrorMsg(
+        `Legacy Excel (.xls) is not supported. Please save as modern .xlsx or .csv: ${legacyFiles.join(', ')}`
+      );
+    } else if (unsupportedFiles.length > 0) {
+      setErrorMsg(`Skipped non-spreadsheet files: ${unsupportedFiles.join(', ')}`);
+    }
+
+    if (validItems.length > 0) {
+      setQueue((prev) => [...prev, ...validItems]);
+      setStatus('configured');
+    }
+  };
+
+  const handleRemoveFile = (id: string) => {
+    setQueue((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      if (updated.length === 0) {
+        setStatus('upload');
+      }
+      return updated;
+    });
+  };
+
+  const handleClearQueue = () => {
+    setQueue([]);
+    setStatus('upload');
+    setErrorMsg(null);
+    setBatchProgress(0);
+    setCurrentProcessingName('');
+  };
+
+  const handleConvertAll = async () => {
+    if (queue.length === 0) return;
+    setStatus('converting');
+    setErrorMsg(null);
+    setBatchProgress(0);
+
+    const total = queue.length;
+
+    for (let i = 0; i < total; i++) {
+      const item = queue[i];
+      setCurrentProcessingName(item.name);
+
+      setQueue((prev) =>
+        prev.map((it, idx) => (idx === i ? { ...it, status: 'converting' } : it))
+      );
+
+      try {
+        const res: ExcelToPdfResult = await convertExcelToPdf(item.file, {
+          orientation,
+          pageSize,
+          includeGridLines,
+          selectedSheetIndex:
+            item.selectedSheetIdx !== undefined && item.selectedSheetIdx >= 0
+              ? item.selectedSheetIdx
+              : undefined,
+        });
+
+        setQueue((prev) =>
+          prev.map((it, idx) =>
+            idx === i
+              ? {
+                  ...it,
+                  status: 'done',
+                  resultBlob: res.pdfBlob,
+                  resultFileName: res.pdfFileName,
+                  totalRows: res.totalRows,
+                }
+              : it
+          )
+        );
+      } catch (err: any) {
+        console.error(`Failed to convert spreadsheet ${item.name}:`, err);
+        setQueue((prev) =>
+          prev.map((it, idx) =>
+            idx === i
+              ? {
+                  ...it,
+                  status: 'error',
+                  error: err?.message || 'Conversion failed',
+                }
+              : it
+          )
+        );
+      }
+
+      setBatchProgress(Math.round(((i + 1) / total) * 100));
+    }
+
+    setStatus('completed');
+    setCurrentProcessingName('');
+    showToast('Batch Complete', `Converted spreadsheets ready for download.`, 'success');
+  };
+
+  // Bulk Save All to Phone
+  const handleSaveAllToPhone = async () => {
+    const readyItems = queue.filter((item) => item.status === 'done' && item.resultBlob);
+    if (readyItems.length === 0) return;
+
+    setIsSavingAll(true);
+    try {
+      const filesToSave = readyItems.map((item) => ({
+        blob: item.resultBlob!,
+        fileName: item.resultFileName || `${item.name.replace(/\.[^.]+$/, '')}.pdf`,
+      }));
+
+      await saveMultipleFilesToPhone(filesToSave, 'Converted_Spreadsheets.zip');
+    } catch (err: any) {
+      console.error('Failed to save all spreadsheets:', err);
+      showToast('Export Error', err?.message || 'Failed to save files', 'error');
+    } finally {
+      setIsSavingAll(false);
+    }
+  };
+
+  // Merge All Converted PDFs into 1 Master PDF
+  const handleMergeAllIntoOne = async () => {
+    const readyItems = queue.filter((item) => item.status === 'done' && item.resultBlob);
+    if (readyItems.length === 0) return;
+
+    setIsMergingAll(true);
+    try {
+      const mergedDoc = await PDFDocument.create();
+
+      for (const item of readyItems) {
+        const docBytes = await item.resultBlob!.arrayBuffer();
+        const subDoc = await PDFDocument.load(docBytes);
+        const copiedPages = await mergedDoc.copyPages(subDoc, subDoc.getPageIndices());
+        copiedPages.forEach((p) => mergedDoc.addPage(p));
+      }
+
+      const mergedBytes = await mergedDoc.save();
+      const mergedBlob = new Blob([mergedBytes.buffer as ArrayBuffer], {
+        type: 'application/pdf',
+      });
+      const mergedFileName = 'Merged_Spreadsheets.pdf';
+
+      await saveAndDownloadFile(mergedBlob, mergedFileName, 'application/pdf');
+      showToast('Merged Successfully', `Combined ${readyItems.length} spreadsheets into ${mergedFileName}`, 'success');
+    } catch (err: any) {
+      console.error('Failed to merge spreadsheets:', err);
+      showToast('Merge Error', err?.message || 'Failed to merge spreadsheets into one PDF', 'error');
+    } finally {
+      setIsMergingAll(false);
+    }
+  };
+
+  const doneCount = queue.filter((i) => i.status === 'done').length;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-12">
-      {/* Clean Header Card */}
-      <div className="rounded-3xl p-5 liquid-glass-card liquid-specular flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl liquid-glass-accent flex items-center justify-center shadow-md">
+    <div className="space-y-5 pb-24 max-w-5xl mx-auto">
+      {/* Title Banner */}
+      <div className="rounded-3xl p-5 liquid-glass-card liquid-specular flex items-center justify-between gap-3 flex-wrap border border-black/10 dark:border-white/10">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-sm border border-emerald-500/20">
             <FileSpreadsheet className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              Excel & CSV to PDF
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-black/10 dark:border-white/10">
-                100% Offline
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
+                Excel &amp; CSV to PDF Studio
+              </h2>
+              <span className="text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                Multi-File Batch
               </span>
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Convert spreadsheet tables into clean, proportional, printable PDF documents.
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Batch convert spreadsheets into proportional, printable PDF tables with bulk phone saving.
             </p>
           </div>
         </div>
 
-        {status !== 'upload' && (
+        {queue.length > 0 && status !== 'converting' && (
           <button
             type="button"
-            onClick={handleReset}
-            className="px-3.5 py-1.5 rounded-xl liquid-glass-btn text-xs font-semibold text-slate-700 dark:text-slate-300 transition active:scale-95 flex items-center gap-1.5"
+            onClick={handleClearQueue}
+            className="px-3 py-1.5 rounded-xl liquid-glass-btn text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">New File</span>
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Clear Queue</span>
           </button>
         )}
       </div>
 
       {/* Error Alert */}
       {errorMsg && (
-        <div className="p-4 rounded-2xl liquid-glass border border-black/10 dark:border-white/15 text-slate-900 dark:text-white text-xs flex items-start gap-3 shadow-sm backdrop-blur-xl animate-in fade-in duration-200">
-          <AlertCircle className="w-5 h-5 shrink-0 text-slate-900 dark:text-white mt-0.5" />
-          <div className="space-y-1">
-            <span className="font-bold">Spreadsheet Notice</span>
-            <p className="text-slate-600 dark:text-slate-300">{errorMsg}</p>
-          </div>
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-rose-600 dark:text-rose-300 text-xs">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <p className="leading-relaxed">{errorMsg}</p>
         </div>
       )}
 
-      {/* STAGE 1: Upload Dropzone */}
+      {/* Upload Dropzone */}
       {status === 'upload' && (
-        <div className="space-y-4">
-          <div
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleFileDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-white/40 dark:border-white/20 hover:border-black/50 dark:hover:border-white/50 rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 liquid-glass-card space-y-4 shadow-sm group"
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={(e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  handleSelectFile(e.target.files[0]);
-                }
-              }}
-              accept=".xlsx,.csv"
-              className="hidden"
-            />
+        <div
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleFileDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className="border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/60 rounded-3xl p-10 sm:p-14 text-center cursor-pointer transition liquid-glass-card liquid-specular space-y-4 group"
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            multiple
+            accept=".xlsx,.csv"
+            onChange={handleFileInputChange}
+            className="hidden"
+          />
 
-            <div className="w-16 h-16 rounded-3xl liquid-glass-accent flex items-center justify-center mx-auto shadow-inner group-hover:scale-110 transition-transform">
-              <UploadCloud className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-1.5 max-w-md mx-auto">
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                Select EXCEL or CSV spreadsheet
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Drag and drop your spreadsheet here, or click to browse.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-2 pt-2">
-              <span className="px-3 py-1 rounded-full text-[11px] font-medium liquid-glass-btn text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                <FileSpreadsheet className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-                Microsoft Excel (.xlsx)
-              </span>
-              <span className="px-3 py-1 rounded-full text-[11px] font-medium liquid-glass-btn text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                <Table className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-                Comma-Separated (.csv)
-              </span>
-            </div>
-
-            <div>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl liquid-glass-accent text-xs font-bold shadow-md transition active:scale-95"
-              >
-                <UploadCloud className="w-4 h-4" />
-                Select Spreadsheet
-              </button>
-            </div>
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm group-hover:scale-105 transition-transform">
+            <UploadCloud className="w-8 h-8" />
           </div>
 
-          <div className="flex items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-              100% Client-Side Privacy
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-              Preserves Table Gridlines
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* STAGE 2: Configured Options & Preview */}
-      {status === 'configured' && selectedFile && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          {/* File Information Card */}
-          <div className="rounded-3xl p-5 liquid-glass-card liquid-specular flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl liquid-glass-accent flex items-center justify-center shrink-0">
-                <FileSpreadsheet className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 line-clamp-1">
-                  {selectedFile.name}
-                </h4>
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  <span>{formatFileSize(selectedFile.size)}</span>
-                  <span>•</span>
-                  <span>{sheets.length} {sheets.length === 1 ? 'Sheet' : 'Sheets'} detected</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:underline shrink-0"
-            >
-              Choose different file
-            </button>
-          </div>
-
-          {/* Sheet Selector (if multiple sheets exist) */}
-          {sheets.length > 1 && (
-            <div className="rounded-3xl p-4 liquid-glass-card liquid-specular space-y-2">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-                Select Sheet to Convert:
-              </label>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                {sheets.map((sheet, idx) => (
-                  <button
-                    key={sheet.sheetName}
-                    type="button"
-                    onClick={() => setSelectedSheetIdx(idx)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                      selectedSheetIdx === idx
-                        ? 'liquid-glass-accent shadow-sm'
-                        : 'liquid-glass-btn text-slate-600 dark:text-slate-400'
-                    }`}
-                  >
-                    {sheet.sheetName} ({sheet.rowCount} rows)
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick Sheet Data Preview */}
-          {currentSheet && currentSheet.rows.length > 0 && (
-            <div className="rounded-3xl p-5 liquid-glass-card liquid-specular space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <Table className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-                  Table Preview: {currentSheet.sheetName}
-                </span>
-                <span>First {Math.min(currentSheet.rows.length, 5)} rows</span>
-              </div>
-
-              <div className="overflow-x-auto rounded-2xl border border-white/20 dark:border-white/10 max-h-48 liquid-glass-input">
-                <table className="w-full text-[11px] text-left border-collapse font-mono">
-                  <tbody>
-                    {currentSheet.rows.slice(0, 5).map((row, rIdx) => (
-                      <tr
-                        key={`r-${rIdx}`}
-                        className={
-                          rIdx === 0
-                            ? 'bg-black/10 dark:bg-white/10 font-bold text-slate-900 dark:text-slate-100'
-                            : 'border-t border-white/10 text-slate-700 dark:text-slate-300'
-                        }
-                      >
-                        {row.cells.slice(0, 6).map((c, cIdx) => (
-                          <td
-                            key={`c-${cIdx}`}
-                            className="p-2 border-r border-white/10 truncate max-w-[130px]"
-                          >
-                            {c.value || '-'}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Conversion Settings */}
-          <div className="rounded-3xl p-5 liquid-glass-card liquid-specular space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-              <Sliders className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-              <span>Table PDF Layout</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div>
-                <label className="block text-slate-500 dark:text-slate-400 mb-1.5 font-medium">Orientation</label>
-                <select
-                  value={orientation}
-                  onChange={(e) => setOrientation(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 font-medium outline-none"
-                >
-                  <option value="landscape" className="bg-slate-900 text-white">Landscape (Best for Wide Tables)</option>
-                  <option value="portrait" className="bg-slate-900 text-white">Portrait</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-500 dark:text-slate-400 mb-1.5 font-medium">Paper Size</label>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 font-medium outline-none"
-                >
-                  <option value="a4" className="bg-slate-900 text-white">A4 (Standard)</option>
-                  <option value="letter" className="bg-slate-900 text-white">US Letter</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-500 dark:text-slate-400 mb-1.5 font-medium">Gridlines</label>
-                <select
-                  value={includeGridLines ? 'yes' : 'no'}
-                  onChange={(e) => setIncludeGridLines(e.target.value === 'yes')}
-                  className="w-full px-3 py-2 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 font-medium outline-none"
-                >
-                  <option value="yes" className="bg-slate-900 text-white">Include Table Borders</option>
-                  <option value="no" className="bg-slate-900 text-white">Clean Minimal (No Borders)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Convert CTA */}
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={handleConvert}
-                className="inline-flex items-center gap-2.5 px-8 py-3 rounded-2xl liquid-glass-accent text-sm font-bold shadow-lg transition active:scale-95"
-              >
-                <FileCheck className="w-5 h-5" />
-                <span>Convert to PDF</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STAGE 3: Converting with Real-Time Progress Bar */}
-      {status === 'converting' && (
-        <div className="rounded-3xl p-8 sm:p-12 liquid-glass-card liquid-specular text-center space-y-6 animate-in fade-in duration-200">
-          <div className="w-16 h-16 rounded-3xl liquid-glass-accent flex items-center justify-center mx-auto shadow-inner">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-
-          <div className="space-y-2 max-w-md mx-auto">
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-              Converting Spreadsheet to PDF...
+          <div className="space-y-1">
+            <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
+              Select or Drop Multiple Excel &amp; CSV Spreadsheets
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {progressStage}
+              Convert multiple .xlsx or .csv files simultaneously. 100% offline on your device.
             </p>
           </div>
 
-          <div className="max-w-md mx-auto space-y-2">
-            <div className="w-full h-2.5 rounded-full liquid-glass-dock overflow-hidden">
-              <div
-                className="h-full bg-black dark:bg-white rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-[11px] font-semibold text-slate-400">
-              <span>Client-Side Engine</span>
-              <span>{progressPercent}%</span>
-            </div>
+          <div className="flex flex-wrap justify-center gap-2 pt-2">
+            <span className="px-3 py-1 rounded-full text-[11px] font-medium liquid-glass text-slate-700 dark:text-slate-300 flex items-center gap-1.5 border border-black/10 dark:border-white/10">
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+              Microsoft Excel (.xlsx)
+            </span>
+            <span className="px-3 py-1 rounded-full text-[11px] font-medium liquid-glass text-slate-700 dark:text-slate-300 flex items-center gap-1.5 border border-black/10 dark:border-white/10">
+              <Table className="w-3.5 h-3.5 text-teal-500" />
+              Comma-Separated (.csv)
+            </span>
+          </div>
+
+          <div className="flex items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400 pt-3">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              100% Private Client-Side
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-emerald-500" />
+              Preserves Gridlines &amp; Alignments
+            </span>
           </div>
         </div>
       )}
 
-      {/* STAGE 4: Completed Result & Download */}
-      {status === 'completed' && result && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <div className="rounded-3xl p-6 liquid-glass-card liquid-specular space-y-5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl liquid-glass-accent flex items-center justify-center shadow-md">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                    Spreadsheet Converted to PDF!
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
-                    {result.pdfFileName}
-                  </p>
-                </div>
+      {/* Queue & Configuration View */}
+      {(status === 'configured' || status === 'converting' || status === 'completed') && (
+        <div className="space-y-4">
+          {/* Active Progress Banner */}
+          {status === 'converting' && (
+            <div className="p-5 rounded-3xl liquid-glass-card liquid-specular shadow-sm space-y-3 border border-emerald-500/20">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
+                  <span>Converting: {currentProcessingName}</span>
+                </span>
+                <span className="font-mono">{batchProgress}%</span>
               </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => saveAndDownloadFile(result.pdfBlob, result.pdfFileName, 'application/pdf')}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl liquid-glass-accent text-xs font-bold shadow-lg transition active:scale-95 cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download PDF</span>
-                </button>
-
-                {onEditInEditor && (
-                  <button
-                    type="button"
-                    onClick={() => onEditInEditor(result.pdfBlob, result.pdfFileName)}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl liquid-glass-btn text-indigo-600 dark:text-indigo-400 text-xs font-bold transition active:scale-95 cursor-pointer"
-                    title="Open in PDF Editor"
-                  >
-                    <FileEdit className="w-4 h-4 text-indigo-500" />
-                    <span>Edit PDF</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl liquid-glass-btn text-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95 cursor-pointer"
-                  title="Convert Another Spreadsheet"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Convert Another</span>
-                </button>
+              <div className="w-full h-2.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                  style={{ width: `${batchProgress}%` }}
+                />
               </div>
             </div>
+          )}
 
-            {/* Metrics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/20 dark:border-white/10 text-xs">
-              <div className="p-3 rounded-2xl liquid-glass-dock border border-white/10">
-                <div className="text-slate-400 text-[11px]">Source File</div>
-                <div className="font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{selectedFile?.name}</div>
-              </div>
-              <div className="p-3 rounded-2xl liquid-glass-dock border border-white/10">
-                <div className="text-slate-400 text-[11px]">PDF Size</div>
-                <div className="font-bold text-slate-800 dark:text-slate-200">
-                  {(result.pdfBlob.size / 1024).toFixed(1)} KB
+          {/* Queued Spreadsheets List */}
+          <div className="p-5 rounded-3xl liquid-glass-card liquid-specular shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                Queued Spreadsheets ({queue.length})
+              </h3>
+              {status !== 'converting' && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add More Files</span>
+                </button>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".xlsx,.csv"
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {queue.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-3.5 rounded-2xl liquid-glass border border-black/5 dark:border-white/10 gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <FileSpreadsheet className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {item.name}
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-mono">
+                        {formatFileSize(item.sizeBytes)} • {item.sheetCount || 1} sheet(s){' '}
+                        {item.totalRows ? `• ~${item.totalRows} rows` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {item.status === 'queued' && (
+                      <span className="text-[11px] font-semibold text-slate-400 px-2.5 py-1 rounded-full bg-slate-500/10">
+                        Queued
+                      </span>
+                    )}
+                    {item.status === 'converting' && (
+                      <span className="text-[11px] font-semibold text-emerald-500 px-2.5 py-1 rounded-full bg-emerald-500/10 flex items-center gap-1.5">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Converting...
+                      </span>
+                    )}
+                    {item.status === 'done' && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-emerald-500 px-2 py-0.5 rounded-full bg-emerald-500/10 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Ready
+                        </span>
+                        {item.resultBlob && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              saveAndDownloadFile(
+                                item.resultBlob!,
+                                item.resultFileName || `${item.name.replace(/\.[^.]+$/, '')}.pdf`,
+                                'application/pdf'
+                              )
+                            }
+                            title="Download PDF"
+                            className="p-1.5 rounded-lg liquid-glass-btn text-emerald-500 hover:text-emerald-600 transition"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {item.resultBlob && onEditInEditor && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onEditInEditor(
+                                item.resultBlob!,
+                                item.resultFileName || `${item.name.replace(/\.[^.]+$/, '')}.pdf`
+                              )
+                            }
+                            title="Open in PDF Editor"
+                            className="p-1.5 rounded-lg liquid-glass-btn text-indigo-500 hover:text-indigo-600 transition"
+                          >
+                            <FileEdit className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {item.status === 'error' && (
+                      <span className="text-[11px] font-semibold text-rose-500 px-2.5 py-1 rounded-full bg-rose-500/10 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Failed
+                      </span>
+                    )}
+
+                    {status !== 'converting' && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(item.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 transition cursor-pointer"
+                        title="Remove file"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="p-3 rounded-2xl liquid-glass-dock border border-white/10">
-                <div className="text-slate-400 text-[11px]">Total Rows</div>
-                <div className="font-bold text-slate-800 dark:text-slate-200">
-                  {result.totalRows.toLocaleString()}
-                </div>
-              </div>
-              <div className="p-3 rounded-2xl liquid-glass-dock border border-white/10">
-                <div className="text-slate-400 text-[11px]">Orientation</div>
-                <div className="font-bold text-slate-800 dark:text-slate-200 capitalize">{orientation}</div>
-              </div>
+              ))}
             </div>
           </div>
+
+          {/* Conversion Settings */}
+          {status === 'configured' && (
+            <div className="rounded-3xl p-5 liquid-glass-card liquid-specular space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+                Batch PDF Table Layout
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
+                    Orientation
+                  </label>
+                  <select
+                    value={orientation}
+                    onChange={(e) => setOrientation(e.target.value as 'landscape' | 'portrait')}
+                    className="w-full px-3 py-2 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 font-medium outline-none border border-black/10 dark:border-white/10"
+                  >
+                    <option value="landscape">Landscape (Best for Wide Tables)</option>
+                    <option value="portrait">Portrait</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
+                    Paper Size
+                  </label>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(e.target.value as 'a4' | 'letter')}
+                    className="w-full px-3 py-2 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 font-medium outline-none border border-black/10 dark:border-white/10"
+                  >
+                    <option value="a4">A4 (Standard)</option>
+                    <option value="letter">US Letter</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
+                    Gridlines
+                  </label>
+                  <select
+                    value={includeGridLines ? 'yes' : 'no'}
+                    onChange={(e) => setIncludeGridLines(e.target.value === 'yes')}
+                    className="w-full px-3 py-2 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 font-medium outline-none border border-black/10 dark:border-white/10"
+                  >
+                    <option value="yes">Include Table Borders</option>
+                    <option value="no">Clean Minimal (No Borders)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Convert CTA */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleConvertAll}
+                  className="inline-flex items-center gap-2.5 px-8 py-3 rounded-2xl liquid-glass-accent text-xs font-black shadow-lg transition active:scale-95 cursor-pointer"
+                >
+                  <FileCheck className="w-4 h-4" />
+                  <span>Convert All ({queue.length}) Spreadsheets to PDF</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Completed State: Bulk Actions */}
+          {status === 'completed' && (
+            <div className="p-6 rounded-3xl liquid-glass-card liquid-specular shadow-sm space-y-4 border border-emerald-500/20">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      Batch Conversion Finished!
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {doneCount} of {queue.length} spreadsheets converted to PDF
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={handleSaveAllToPhone}
+                    disabled={isSavingAll || doneCount === 0}
+                    className="liquid-glass-accent flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold shadow-md transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingAll ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Archive className="w-3.5 h-3.5" />
+                    )}
+                    <span>Save All to Phone (ZIP)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleMergeAllIntoOne}
+                    disabled={isMergingAll || doneCount === 0}
+                    className="liquid-glass-btn flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-teal-600 dark:text-teal-400 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    {isMergingAll ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Layers className="w-3.5 h-3.5" />
+                    )}
+                    <span>Merge All into 1 PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleClearQueue}
+                    className="p-2.5 rounded-xl liquid-glass-btn text-slate-600 dark:text-slate-300 hover:text-slate-900 transition"
+                    title="Convert New Batch"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
