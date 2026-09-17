@@ -88,8 +88,6 @@ public class ClockWidget extends AppWidgetProvider {
 
             PendingIntent openAppPendingIntent = PendingIntent.getActivity(context, 801, openAppIntent, immutableFlags);
             views.setOnClickPendingIntent(R.id.widget_clock_root, openAppPendingIntent);
-            views.setOnClickPendingIntent(R.id.widget_clock_time, openAppPendingIntent);
-            views.setOnClickPendingIntent(R.id.widget_clock_date, openAppPendingIntent);
 
             // Click on alarm preview row opens Alarms subtab directly
             Intent openAlarmIntent = new Intent(context, MainActivity.class);
@@ -98,7 +96,8 @@ public class ClockWidget extends AppWidgetProvider {
             openAlarmIntent.putExtra("route", "clock?subtab=alarm");
             openAlarmIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent openAlarmPI = PendingIntent.getActivity(context, 803, openAlarmIntent, immutableFlags);
-            views.setOnClickPendingIntent(R.id.widget_clock_alarm_text, openAlarmPI);
+            views.setOnClickPendingIntent(R.id.widget_clock_time_text, openAlarmPI);
+            views.setOnClickPendingIntent(R.id.widget_clock_label_text, openAlarmPI);
 
             // Toggle button click
             Intent toggleIntent = new Intent(context, ClockWidget.class);
