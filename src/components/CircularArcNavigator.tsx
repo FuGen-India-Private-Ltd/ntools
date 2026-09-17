@@ -179,16 +179,16 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
           : 'opacity-100 translate-y-0'
       }`}
     >
-      {/* Rotating Curved Circular Arc Dial Container with Liquid Glass Material */}
+      {/* Rotating Curved Circular Arc Dial Container with Apple Liquid Glass Material */}
       <div
-        className="relative w-[284px] sm:w-[324px] h-[72px] px-4 rounded-[36px] liquid-glass-dock liquid-specular backdrop-blur-2xl bg-white/75 dark:bg-[#0b0e17]/70 border border-white/50 dark:border-white/16 shadow-[0_16px_40px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.85)] flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden"
+        className="relative w-[288px] sm:w-[328px] h-[68px] px-4 rounded-[34px] liquid-glass-arc-dock liquid-specular flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        {/* Ambient fluid glow under the active item */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-8 bg-indigo-500/20 dark:bg-indigo-400/25 blur-xl pointer-events-none rounded-full" />
+        {/* Ambient luminous jewel glow beneath the active item */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-32 h-10 bg-indigo-500/35 dark:bg-indigo-400/40 blur-2xl pointer-events-none rounded-full" />
 
         {/* Dynamic Rotating Items along the Circular Arc */}
         {ARC_ITEMS.map((item, i) => {
@@ -207,8 +207,8 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
           const rad = (itemAngleDeg * Math.PI) / 180;
           const x = ARC_RADIUS * Math.sin(rad);
           const y = ARC_RADIUS * (1 - Math.cos(rad));
-          const scale = isActive ? 1.08 : 0.75;
-          const opacity = !isVisible ? 0 : isActive ? 1 : 0.6;
+          const scale = isActive ? 1.08 : 0.76;
+          const opacity = !isVisible ? 0 : isActive ? 1 : 0.65;
 
           return (
             <button
@@ -226,30 +226,33 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
                   ? 'none'
                   : 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.16s ease-out',
               }}
-              className="absolute top-1.5 flex flex-col items-center gap-0.5 select-none active:scale-95 transition-transform"
+              className="absolute top-1 flex flex-col items-center gap-0.5 select-none active:scale-95 transition-transform"
               title={label}
             >
               <div
                 className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center transition-all duration-150 border ${
                   isActive
-                    ? 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white border-white/40 shadow-[0_4px_16px_rgba(99,102,241,0.5),inset_0_1px_1px_rgba(255,255,255,0.6)]'
-                    : 'bg-white/40 dark:bg-white/6 backdrop-blur-md text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/12 border-black/5 dark:border-white/10 shadow-sm'
+                    ? 'bg-gradient-to-b from-indigo-500 via-indigo-600 to-indigo-700 text-white border-white/60 dark:border-white/40 shadow-[0_6px_22px_rgba(99,102,241,0.65),inset_0_1.5px_2px_rgba(255,255,255,0.85)]'
+                    : 'bg-white/20 dark:bg-white/[0.07] backdrop-blur-xl text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/14 border-white/40 dark:border-white/12 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]'
                 }`}
               >
                 <Icon
                   className={`w-5 h-5 transition-transform duration-150 ${
-                    isActive ? 'scale-110 stroke-[2.4]' : 'scale-90 stroke-[2.2]'
+                    isActive ? 'scale-110 stroke-[2.4]' : 'scale-90 stroke-[2.1]'
                   }`}
                 />
               </div>
 
-              <span
-                className={`text-[10px] font-bold tracking-tight text-slate-900 dark:text-white px-2 py-0.5 rounded-full whitespace-nowrap drop-shadow-sm transition-opacity duration-150 ${
+              <div
+                className={`flex items-center gap-1 transition-opacity duration-150 ${
                   isActive ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
               >
-                {label}
-              </span>
+                <span className="w-1 h-1 rounded-full bg-indigo-500 dark:bg-indigo-300 animate-pulse" />
+                <span className="text-[10px] font-extrabold tracking-tight text-slate-900 dark:text-white drop-shadow-sm whitespace-nowrap">
+                  {label}
+                </span>
+              </div>
             </button>
           );
         })}

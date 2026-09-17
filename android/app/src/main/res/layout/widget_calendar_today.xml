@@ -5,16 +5,16 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
     android:orientation="horizontal"
-    android:padding="12dp">
+    android:padding="8dp">
 
     <!-- Left Column: Big Date Card -->
     <LinearLayout
-        android:layout_width="92dp"
+        android:layout_width="74dp"
         android:layout_height="match_parent"
         android:background="@drawable/widget_btn_bg"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="6dp">
+        android:padding="4dp">
 
         <TextView
             android:id="@+id/widget_cal_today_dayname"
@@ -22,16 +22,17 @@
             android:layout_height="wrap_content"
             android:text="Sunday"
             android:textColor="#38BDF8"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_cal_today_daynum"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:includeFontPadding="false"
             android:text="13"
             android:textColor="#FFFFFF"
-            android:textSize="36sp"
+            android:textSize="28sp"
             android:textStyle="bold" />
 
         <TextView
@@ -40,14 +41,14 @@
             android:layout_height="wrap_content"
             android:text="Sep 2026"
             android:textColor="#CBD5E1"
-            android:textSize="11.5sp" />
+            android:textSize="10.5sp" />
     </LinearLayout>
 
     <!-- Right Column: Today's Agenda & Festivals -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="8dp"
         android:layout_weight="1"
         android:gravity="center_vertical"
         android:orientation="vertical">
@@ -61,7 +62,7 @@
             android:maxLines="1"
             android:text="🌟 Ganesh Chaturthi Festival"
             android:textColor="#F59E0B"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <!-- Event / Birthday Notice -->
@@ -69,21 +70,21 @@
             android:id="@+id/widget_cal_today_event"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="2dp"
             android:ellipsize="end"
-            android:maxLines="2"
+            android:maxLines="1"
             android:text="🎂 Birthday Celebration &amp; Kannada Study"
             android:textColor="#FFFFFF"
-            android:textSize="12sp" />
+            android:textSize="11.5sp" />
 
         <!-- Tap to open -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="2dp"
             android:text="Tap to view full calendar ➔"
             android:textColor="#38BDF8"
-            android:textSize="11sp"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 

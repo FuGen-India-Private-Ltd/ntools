@@ -72,7 +72,6 @@ const WIDGET_TABS: WidgetDef[] = [
 export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
   const [config, setConfig] = useState<WidgetCustomizationConfig>(() => getStoredWidgetConfig());
   const [selectedPreview, setSelectedPreview] = useState<WidgetPreviewType>('clock_transparent');
-  const [viewMode, setViewMode] = useState<'interactive' | 'homescreen'>('interactive');
   const [syncNotice, setSyncNotice] = useState(false);
 
   // Interactive mini calculator preview state
@@ -174,51 +173,20 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Android Widgets &amp; Customizer</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-extrabold border border-emerald-500/25">
-                11 Widgets Available
-              </span>
+              <span>Widget Customizer Studio</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Live previews for all home screen widgets. In Android's widget picker, you will see how each widget actually looks!
+              Personalize colors, background styles, and corner radius for your home screen widgets.
             </p>
           </div>
         </div>
 
-        {/* Live Auto-Applied Status & View Mode Switcher */}
-        <div className="flex items-center gap-2">
-          {syncNotice && (
-            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 flex items-center gap-1 animate-pulse">
-              <Check className="w-3 h-3" /> Auto-Applied to Home Screen
-            </span>
-          )}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl liquid-glass-dock border border-black/10 dark:border-white/10">
-            <button
-              type="button"
-              onClick={() => setViewMode('interactive')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                viewMode === 'interactive'
-                  ? 'liquid-glass-accent shadow-sm text-white'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Interactive</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('homescreen')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                viewMode === 'homescreen'
-                  ? 'liquid-glass-accent shadow-sm text-white'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Android Picker</span>
-            </button>
-          </div>
-        </div>
+        {/* Live Auto-Applied Status */}
+        {syncNotice && (
+          <span className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 flex items-center gap-1.5 animate-pulse border border-emerald-500/30">
+            <Check className="w-3.5 h-3.5" /> Auto-Applied to Home Screen
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -334,18 +302,6 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
             </div>
           </div>
 
-          {/* Quick Info Box */}
-          <div className="rounded-3xl p-4 liquid-glass-card text-xs text-slate-500 dark:text-slate-400 space-y-1.5">
-            <span className="font-bold text-slate-700 dark:text-slate-200 block">
-              💡 How to Add Widgets on Android:
-            </span>
-            <ol className="list-decimal pl-4 space-y-0.5 text-[11px]">
-              <li>Long press on any empty space on your phone home screen.</li>
-              <li>Tap <strong>Widgets</strong> in the popup menu.</li>
-              <li>Scroll to <strong>nTools</strong> to see realistic full-color previews.</li>
-              <li>Touch and hold your chosen widget, then drag it onto your home screen!</li>
-            </ol>
-          </div>
         </div>
 
         {/* Right: Live Dynamic Widget Preview (7 cols) */}
@@ -384,7 +340,7 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
               </span>
             </div>
             <span className="text-[11px] text-slate-400">
-              {viewMode === 'interactive' ? 'Live Interactive Preview' : 'Exact Android Picker Preview'}
+              Live Preview
             </span>
           </div>
 
@@ -392,24 +348,7 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
           <div className="relative rounded-3xl p-6 sm:p-8 liquid-glass-card liquid-specular flex flex-col items-center justify-center min-h-[380px] overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/[0.02] to-black/[0.06] dark:via-white/[0.01] dark:to-white/[0.03] pointer-events-none" />
 
-            {/* Mode 1: Exact Home Screen Reality Image */}
-            {viewMode === 'homescreen' ? (
-              <div className="w-full max-w-md flex flex-col items-center space-y-3 z-10">
-                <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-black/10 dark:border-white/15 bg-black/40">
-                  <img
-                    src={activeWidgetDef.previewImg}
-                    alt={`${activeWidgetDef.label} Preview`}
-                    className="w-full h-auto max-h-[300px] object-contain block"
-                  />
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Visible directly in Android OS Widget Picker</span>
-                </div>
-              </div>
-            ) : (
-              /* Mode 2: Live Customizable Interactive Mockups */
-              <div className="w-full max-w-sm transition-all z-10">
+            <div className="w-full max-w-sm transition-all z-10">
                 {/* 1. Transparent Clock Widget */}
                 {selectedPreview === 'clock_transparent' && (
                   <div
@@ -821,7 +760,6 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
                   </div>
                 )}
               </div>
-            )}
           </div>
         </div>
       </div>

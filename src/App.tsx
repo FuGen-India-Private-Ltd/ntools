@@ -11,6 +11,11 @@ import {
   requestOverlayPermissionNative,
   checkExactAlarmPermissionNative,
   requestExactAlarmPermissionNative,
+  checkBatteryOptimizationExemptNative,
+  requestBatteryOptimizationExemptionNative,
+  checkAllStartupPermissionsNative,
+  requestNotificationPermissionNative,
+  requestAudioPermissionNative,
   testAlarmPopupNative,
   dismissAlarmNative,
   snoozeAlarmNative,
@@ -54,6 +59,9 @@ import {
   Settings,
   Mic,
   Compass,
+  Bell,
+  BatteryCharging,
+  Layers,
 } from 'lucide-react';
 import { getNextActiveAlarmDetails } from './lib/timeAndClock';
 
@@ -133,14 +141,23 @@ export function App() {
   const [showEntrancePermissionModal, setShowEntrancePermissionModal] = useState<boolean>(false);
   const [hasOverlayPermission, setHasOverlayPermission] = useState<boolean>(true);
   const [hasExactAlarmPermission, setHasExactAlarmPermission] = useState<boolean>(true);
-  const [isTestingModalPopup, setIsTestingModalPopup] = useState<boolean>(false);
-  const [isDialTutorialOpen, setIsDialTutorialOpen] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('has_seen_dial_tutorial') !== 'true';
-    } catch {
-      return false;
-    }
+  const [startupPerms, setStartupPerms] = useState<{
+    exactAlarm: boolean;
+    batteryExempt: boolean;
+    overlay: boolean;
+    notifications: boolean;
+    audioRecord: boolean;
+    allEssentialGranted: boolean;
+  }>({
+    exactAlarm: true,
+    batteryExempt: true,
+    overlay: true,
+    notifications: true,
+    audioRecord: true,
+    allEssentialGranted: true,
   });
+  const [isTestingModalPopup, setIsTestingModalPopup] = useState<boolean>(false);
+  const [isDialTutorialOpen, setIsDialTutorialOpen] = useState<boolean>(false);
 
   // Live active alarm preview for the top navigation bar
   const [activeAlarmPreview, setActiveAlarmPreview] = useState<{
@@ -225,26 +242,25 @@ export function App() {
 
   useEffect(() => {
     const checkEntrancePermissions = async () => {
-      const overlay = await checkOverlayPermissionNative();
-      const exact = await checkExactAlarmPermissionNative();
-      setHasOverlayPermission(overlay);
-      setHasExactAlarmPermission(exact);
+      const perms = await checkAllStartupPermissionsNative();
+      setStartupPerms(perms);
+      setHasOverlayPermission(perms.overlay);
+      setHasExactAlarmPermission(perms.exactAlarm);
 
-      // Prompt user on entry only if overlay permission is missing AND user hasn't disabled it
-      const userWantsOverlay = localStorage.getItem('kannada_onscreen_popups') !== 'false';
-      if (!overlay && userWantsOverlay) {
+      const userDismissed = localStorage.getItem('entrance_permissions_dismissed') === 'true';
+      if (!userDismissed && !perms.allEssentialGranted) {
         setShowEntrancePermissionModal(true);
       }
     };
 
-    const timer = setTimeout(checkEntrancePermissions, 250);
+    const timer = setTimeout(checkEntrancePermissions, 300);
 
     const onFocus = async () => {
-      const overlay = await checkOverlayPermissionNative();
-      const exact = await checkExactAlarmPermissionNative();
-      setHasOverlayPermission(overlay);
-      setHasExactAlarmPermission(exact);
-      if (overlay) {
+      const perms = await checkAllStartupPermissionsNative();
+      setStartupPerms(perms);
+      setHasOverlayPermission(perms.overlay);
+      setHasExactAlarmPermission(perms.exactAlarm);
+      if (perms.allEssentialGranted) {
         setShowEntrancePermissionModal(false);
       }
     };
@@ -540,21 +556,21 @@ export function App() {
         />
       )}
 
-      {/* Onboarding / Entrance Permission Modal for On-Screen Popups */}
+      {/* Onboarding / Entrance Permission Modal for All Required System Access */}
       {showEntrancePermissionModal && (
-        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-xl flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-3xl liquid-glass liquid-specular border border-white/30 dark:border-white/15 shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
-            <div className="flex items-start justify-between gap-3">
+        <div className="fixed inset-0 z-[99999] bg-black/75 backdrop-blur-xl flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-md my-auto rounded-3xl liquid-glass liquid-specular border border-white/30 dark:border-white/15 shadow-2xl overflow-hidden p-5 sm:p-6 space-y-4 animate-scale-up max-h-[92vh] flex flex-col">
+            <div className="flex items-start justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center shadow-lg shrink-0 font-bold">
-                  <Zap className="w-6 h-6" />
+                <div className="w-11 h-11 rounded-2xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center shadow-lg shrink-0 font-bold">
+                  <Zap className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
-                    Enable On-Screen Popups
+                    System Permissions
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                    For alarms, timers &amp; background reminders
+                    Ensure alarms, voice recorder &amp; widgets work reliably
                   </p>
                 </div>
               </div>
@@ -567,52 +583,29 @@ export function App() {
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              To let alarms and countdown timers ring and pop up directly on top of your home screen or whichever app you are using, please allow <strong>Display over other apps</strong>.
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed shrink-0">
+              For on-time alarms, background audio recording, and uninterrupted widget sync, please grant the following permissions:
             </p>
 
-            <div className="space-y-2.5 pt-1">
-              {/* Overlay Permission Switch */}
-              <div className="flex items-center justify-between p-3.5 rounded-2xl liquid-glass-card border border-white/20 dark:border-white/10">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">
-                    Display Over Other Apps
-                  </span>
-                  <span className="text-[11px] text-slate-500 block">
-                    {hasOverlayPermission ? 'Active & granted' : 'Tap Enable and turn the switch ON'}
-                  </span>
+            <div className="space-y-2.5 overflow-y-auto pr-1 flex-1 min-h-0">
+              {/* 1. Exact Alarm Permission */}
+              <div className="flex items-center justify-between p-3 rounded-2xl liquid-glass-card border border-white/20 dark:border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <AlarmClock className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block truncate">
+                      Exact Alarms &amp; Wakeups
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block truncate">
+                      Precise alarms without OS delays
+                    </span>
+                  </div>
                 </div>
 
-                {hasOverlayPermission ? (
-                  <span className="px-3 py-1.5 rounded-xl bg-black/10 dark:bg-white/15 text-slate-900 dark:text-white text-xs font-bold border border-black/15 dark:border-white/20">
-                    ✓ Active
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await requestOverlayPermissionNative();
-                    }}
-                    className="px-4 py-2 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition"
-                  >
-                    Enable
-                  </button>
-                )}
-              </div>
-
-              {/* Exact Alarm Permission Switch */}
-              <div className="flex items-center justify-between p-3.5 rounded-2xl liquid-glass-card border border-white/20 dark:border-white/10">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">
-                    Exact Alarms &amp; Wakeups
-                  </span>
-                  <span className="text-[11px] text-slate-500 block">
-                    {hasExactAlarmPermission ? 'Active & granted' : 'Guaranteed wakeup without delays'}
-                  </span>
-                </div>
-
-                {hasExactAlarmPermission ? (
-                  <span className="px-3 py-1.5 rounded-xl bg-black/10 dark:bg-white/15 text-slate-900 dark:text-white text-xs font-bold border border-black/15 dark:border-white/20">
+                {startupPerms.exactAlarm ? (
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20 shrink-0">
                     ✓ Active
                   </span>
                 ) : (
@@ -621,7 +614,139 @@ export function App() {
                     onClick={async () => {
                       await requestExactAlarmPermissionNative();
                     }}
-                    className="px-4 py-2 rounded-xl liquid-glass-btn text-slate-900 dark:text-slate-100 text-xs font-bold active:scale-95 transition"
+                    className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
+                  >
+                    Enable
+                  </button>
+                )}
+              </div>
+
+              {/* 2. Battery Optimization Exemption */}
+              <div className="flex items-center justify-between p-3 rounded-2xl liquid-glass-card border border-white/20 dark:border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <BatteryCharging className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block truncate">
+                      Unrestricted Battery
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block truncate">
+                      Rings even during Android Doze mode
+                    </span>
+                  </div>
+                </div>
+
+                {startupPerms.batteryExempt ? (
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20 shrink-0">
+                    ✓ Active
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await requestBatteryOptimizationExemptionNative();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
+                  >
+                    Enable
+                  </button>
+                )}
+              </div>
+
+              {/* 3. Overlay Permission */}
+              <div className="flex items-center justify-between p-3 rounded-2xl liquid-glass-card border border-white/20 dark:border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block truncate">
+                      Display Over Other Apps
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block truncate">
+                      Full-screen popup over lock &amp; apps
+                    </span>
+                  </div>
+                </div>
+
+                {startupPerms.overlay ? (
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20 shrink-0">
+                    ✓ Active
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await requestOverlayPermissionNative();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
+                  >
+                    Enable
+                  </button>
+                )}
+              </div>
+
+              {/* 4. Notification Permission */}
+              <div className="flex items-center justify-between p-3 rounded-2xl liquid-glass-card border border-white/20 dark:border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block truncate">
+                      Push Notifications
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block truncate">
+                      Countdown timers &amp; alert banners
+                    </span>
+                  </div>
+                </div>
+
+                {startupPerms.notifications ? (
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20 shrink-0">
+                    ✓ Active
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await requestNotificationPermissionNative();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
+                  >
+                    Enable
+                  </button>
+                )}
+              </div>
+
+              {/* 5. Microphone Permission */}
+              <div className="flex items-center justify-between p-3 rounded-2xl liquid-glass-card border border-white/20 dark:border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                    <Mic className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block truncate">
+                      Microphone Access
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block truncate">
+                      Voice notes &amp; live waveform visualizer
+                    </span>
+                  </div>
+                </div>
+
+                {startupPerms.audioRecord ? (
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20 shrink-0">
+                    ✓ Active
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await requestAudioPermissionNative();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
                   >
                     Enable
                   </button>
@@ -630,7 +755,7 @@ export function App() {
             </div>
 
             {/* Actions */}
-            <div className="pt-2 space-y-2">
+            <div className="pt-2 space-y-2 shrink-0">
               <button
                 type="button"
                 onClick={async () => {
@@ -649,7 +774,7 @@ export function App() {
                   setTimeout(() => setIsTestingModalPopup(false), 3000);
                 }}
                 disabled={isTestingModalPopup}
-                className="w-full py-3 rounded-2xl liquid-glass-btn text-slate-900 dark:text-slate-100 text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition"
+                className="w-full py-2.5 rounded-2xl liquid-glass-btn text-slate-900 dark:text-slate-100 text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition"
               >
                 <Play className="w-4 h-4" />
                 <span>{isTestingModalPopup ? 'Firing in 1.5s...' : 'Test On-Screen Pop-up (1.5s)'}</span>
@@ -659,17 +784,17 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    localStorage.setItem('entrance_overlay_perm_dismissed', 'true');
+                    localStorage.setItem('entrance_permissions_dismissed', 'true');
                     setShowEntrancePermissionModal(false);
                   }}
-                  className="w-1/2 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-semibold transition text-center"
+                  className="w-1/2 py-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-semibold transition text-center"
                 >
                   Don't Ask Again
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowEntrancePermissionModal(false)}
-                  className="w-1/2 py-2.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition text-center"
+                  className="w-1/2 py-2 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition text-center"
                 >
                   Continue to App
                 </button>

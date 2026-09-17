@@ -274,6 +274,67 @@ public class AppWidgetSyncPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void checkAllStartupPermissions(PluginCall call) {
+        Context ctx = getContext();
+        boolean exactAlarm = true;
+        boolean batteryExempt = true;
+        boolean overlay = true;
+        boolean notifications = true;
+        boolean audioRecord = true;
+
+        if (ctx != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+                exactAlarm = (am != null) && am.canScheduleExactAlarms();
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+                batteryExempt = (pm != null) && pm.isIgnoringBatteryOptimizations(ctx.getPackageName());
+                overlay = Settings.canDrawOverlays(ctx);
+                audioRecord = ctx.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notifications = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            }
+        }
+
+        JSObject ret = new JSObject();
+        ret.put("exactAlarm", exactAlarm);
+        ret.put("batteryExempt", batteryExempt);
+        ret.put("overlay", overlay);
+        ret.put("notifications", notifications);
+        ret.put("audioRecord", audioRecord);
+        ret.put("allEssentialGranted", exactAlarm && batteryExempt && overlay);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void requestNotificationPermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Activity act = getActivity();
+            if (act != null) {
+                act.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 102);
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("success", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void requestAudioPermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Activity act = getActivity();
+            if (act != null) {
+                act.requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 103);
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("success", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void getPendingRoute(PluginCall call) {
         JSObject ret = new JSObject();
         ret.put("route", MainActivity.pendingRoute != null ? MainActivity.pendingRoute : "");

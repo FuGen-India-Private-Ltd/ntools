@@ -6,12 +6,12 @@
     android:background="@drawable/widget_bg"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="12dp">
+    android:padding="6dp">
 
     <!-- Left Icon / Mode Badge -->
     <LinearLayout
-        android:layout_width="46dp"
-        android:layout_height="46dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:background="@drawable/widget_btn_bg"
         android:gravity="center">
 
@@ -21,15 +21,15 @@
             android:layout_height="wrap_content"
             android:text="⏱"
             android:textColor="#8B5CF6"
-            android:textSize="22sp" />
+            android:textSize="18sp" />
     </LinearLayout>
 
     <!-- Center Digits & Mode -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="6dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="4dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -38,18 +38,21 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
+            android:includeFontPadding="false"
             android:text="25:00"
             android:textColor="#FFFFFF"
-            android:textSize="24sp"
+            android:textSize="20sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_pomo_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text="Focus Session • Ready"
             android:textColor="#C4B5FD"
-            android:textSize="11.5sp"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -63,39 +66,39 @@
         <!-- Start Button -->
         <TextView
             android:id="@+id/btn_pomo_start"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginEnd="5dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginEnd="4dp"
             android:background="@drawable/widget_btn_bg"
             android:gravity="center"
             android:text="▶"
             android:textColor="#34D399"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <!-- Pause Button -->
         <TextView
             android:id="@+id/btn_pomo_pause"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginEnd="5dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginEnd="4dp"
             android:background="@drawable/widget_btn_bg"
             android:gravity="center"
             android:text="⏸"
             android:textColor="#F59E0B"
-            android:textSize="13sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
         <!-- End / Reset Button -->
         <TextView
             android:id="@+id/btn_pomo_end"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:background="@drawable/widget_btn_bg"
             android:gravity="center"
             android:text="⏹"
             android:textColor="#F87171"
-            android:textSize="13sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>

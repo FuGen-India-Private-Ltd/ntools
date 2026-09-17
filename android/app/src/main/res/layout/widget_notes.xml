@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -20,53 +20,53 @@
             android:layout_weight="1"
             android:text="📝 Notes"
             android:textColor="#2DD4BF"
-            android:textSize="13sp"
+            android:textSize="12.5sp"
             android:textStyle="bold" />
 
         <!-- Previous Note Button -->
         <TextView
             android:id="@+id/btn_note_prev"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_marginEnd="4dp"
             android:background="@drawable/widget_btn_bg"
             android:gravity="center"
             android:text="◀"
             android:textColor="#94A3B8"
-            android:textSize="11sp"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
 
         <!-- Next Note Button -->
         <TextView
             android:id="@+id/btn_note_next"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_marginEnd="4dp"
             android:background="@drawable/widget_btn_bg"
             android:gravity="center"
             android:text="▶"
             android:textColor="#94A3B8"
-            android:textSize="11sp"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
 
         <!-- Add Note Button -->
         <TextView
             android:id="@+id/btn_note_add"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:background="@drawable/widget_btn_bg"
             android:gravity="center"
             android:text="+"
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
     </LinearLayout>
 
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="3dp"
+        android:layout_marginBottom="4dp"
         android:background="#26FFFFFF" />
 
     <TextView
@@ -77,18 +77,18 @@
         android:maxLines="1"
         android:text="Latest Note Title"
         android:textColor="#FFFFFF"
-        android:textSize="14.5sp"
+        android:textSize="13.5sp"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/widget_note_snippet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
         android:ellipsize="end"
         android:maxLines="2"
         android:text="Tap to open note and write Kannada markdown..."
         android:textColor="#CBD5E1"
-        android:textSize="12.5sp" />
+        android:textSize="11.5sp" />
 
 </LinearLayout>

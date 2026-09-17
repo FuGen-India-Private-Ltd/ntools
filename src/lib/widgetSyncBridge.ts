@@ -25,6 +25,16 @@ export interface AppWidgetSyncPluginInterface {
   snoozeAlarm(options?: { minutes?: number }): Promise<{ success: boolean }>;
   getPendingRoute(): Promise<{ route: string }>;
   clearPendingRoute(): Promise<{ success: boolean }>;
+  checkAllStartupPermissions(): Promise<{
+    exactAlarm: boolean;
+    batteryExempt: boolean;
+    overlay: boolean;
+    notifications: boolean;
+    audioRecord: boolean;
+    allEssentialGranted: boolean;
+  }>;
+  requestNotificationPermission(): Promise<{ success: boolean }>;
+  requestAudioPermission(): Promise<{ success: boolean }>;
 }
 
 const AppWidgetSync = registerPlugin<AppWidgetSyncPluginInterface>('AppWidgetSyncPlugin');
@@ -268,6 +278,51 @@ export async function clearPendingRouteNative(): Promise<void> {
     }
   } catch (e) {
     console.debug('Clear pending route error:', e);
+  }
+}
+
+export async function checkAllStartupPermissionsNative(): Promise<{
+  exactAlarm: boolean;
+  batteryExempt: boolean;
+  overlay: boolean;
+  notifications: boolean;
+  audioRecord: boolean;
+  allEssentialGranted: boolean;
+}> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      return await AppWidgetSync.checkAllStartupPermissions();
+    }
+  } catch (e) {
+    console.debug('checkAllStartupPermissions error:', e);
+  }
+  return {
+    exactAlarm: true,
+    batteryExempt: true,
+    overlay: true,
+    notifications: true,
+    audioRecord: true,
+    allEssentialGranted: true,
+  };
+}
+
+export async function requestNotificationPermissionNative(): Promise<void> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await AppWidgetSync.requestNotificationPermission();
+    }
+  } catch (e) {
+    console.debug('requestNotificationPermission error:', e);
+  }
+}
+
+export async function requestAudioPermissionNative(): Promise<void> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await AppWidgetSync.requestAudioPermission();
+    }
+  } catch (e) {
+    console.debug('requestAudioPermission error:', e);
   }
 }
 
