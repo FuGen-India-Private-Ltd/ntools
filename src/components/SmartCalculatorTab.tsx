@@ -379,70 +379,70 @@ export function SmartCalculatorTab() {
             <button
               type="button"
               onClick={() => setIsRadians(!isRadians)}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               {isRadians ? 'RAD' : 'DEG'}
             </button>
             <button
               type="button"
               onClick={() => handleInput('sin(')}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               sin
             </button>
             <button
               type="button"
               onClick={() => handleInput('cos(')}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               cos
             </button>
             <button
               type="button"
               onClick={() => handleInput('tan(')}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               tan
             </button>
             <button
               type="button"
               onClick={() => handleInput('√(')}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               √
             </button>
             <button
               type="button"
               onClick={() => handleInput('^')}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               xʸ
             </button>
             <button
               type="button"
               onClick={() => handleInput('(')}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               (
             </button>
             <button
               type="button"
               onClick={() => handleInput(')')}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               )
             </button>
             <button
               type="button"
               onClick={() => handleInput('π')}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               π
             </button>
             <button
               type="button"
               onClick={handleFactorial}
-              className="py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold active:scale-90 transition-transform"
+              className="py-1.5 rounded-xl liquid-glass-btn font-bold active:scale-90 transition-transform"
             >
               n!
             </button>

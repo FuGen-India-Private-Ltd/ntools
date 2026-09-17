@@ -58,10 +58,10 @@ public class NoteWidgetConfigureActivity extends Activity {
             return;
         }
 
-        // Build a sleek dialog UI dynamically
+        // Build a sleek dialog UI dynamically with liquid glass background
         android.widget.LinearLayout root = new android.widget.LinearLayout(this);
         root.setOrientation(android.widget.LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.parseColor("#18181B")); // zinc-900 dark theme
+        root.setBackgroundResource(R.drawable.widget_bg);
         root.setPadding(48, 48, 48, 48);
 
         TextView header = new TextView(this);
@@ -98,8 +98,8 @@ public class NoteWidgetConfigureActivity extends Activity {
         }
 
         ListView listView = new ListView(this);
-        listView.setDivider(new android.graphics.drawable.ColorDrawable(Color.parseColor("#27272A")));
-        listView.setDividerHeight(2);
+        listView.setDivider(new android.graphics.drawable.ColorDrawable(Color.parseColor("#26FFFFFF")));
+        listView.setDividerHeight(1);
 
         ArrayAdapter<NoteEntry> adapter = new ArrayAdapter<NoteEntry>(this, android.R.layout.simple_list_item_2, android.R.id.text1, notesList) {
             @Override

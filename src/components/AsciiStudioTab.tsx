@@ -175,15 +175,15 @@ export const AsciiStudioTab: React.FC = () => {
           </div>
 
           {/* Options & Non-ASCII Mode Bar */}
-          <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-4 space-y-3">
+          <div className="rounded-2xl liquid-glass-card liquid-specular p-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               {/* Output Format */}
               <div>
-                <label className="text-[11px] font-medium text-slate-500 block mb-1">ASCII Format</label>
+                <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1">ASCII Format</label>
                 <select
                   value={format}
                   onChange={(e) => setFormat(e.target.value as AsciiFormat)}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-mono"
+                  className="w-full px-2.5 py-1.5 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 text-xs font-mono outline-none"
                 >
                   <option value="dec">Decimal (65 66 67)</option>
                   <option value="hex">Hexadecimal (41 42 43)</option>
@@ -194,11 +194,11 @@ export const AsciiStudioTab: React.FC = () => {
 
               {/* Delimiter */}
               <div>
-                <label className="text-[11px] font-medium text-slate-500 block mb-1">Separator / Delimiter</label>
+                <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1">Separator / Delimiter</label>
                 <select
                   value={delimiter}
                   onChange={(e) => setDelimiter(e.target.value as any)}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs"
+                  className="w-full px-2.5 py-1.5 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 text-xs outline-none"
                 >
                   <option value="space">Space (" ")</option>
                   <option value="comma">Comma (",")</option>
@@ -210,11 +210,11 @@ export const AsciiStudioTab: React.FC = () => {
 
               {/* Non-ASCII Policy */}
               <div>
-                <label className="text-[11px] font-medium text-slate-500 block mb-1">Non-ASCII Policy</label>
+                <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1">Non-ASCII Policy</label>
                 <select
                   value={nonAsciiMode}
                   onChange={(e) => setNonAsciiMode(e.target.value as NonAsciiMode)}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs"
+                  className="w-full px-2.5 py-1.5 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 text-xs outline-none"
                 >
                   <option value="highlight">Highlight & Keep Values</option>
                   <option value="transliterate">Auto-Transliterate (é ➔ e)</option>
