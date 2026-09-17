@@ -814,11 +814,11 @@ export function App() {
               className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform shrink-0"
               title="Return to Home Dashboard"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-md shadow-cyan-500/20 border border-white/40 dark:border-white/20 bg-white dark:bg-slate-900 flex items-center justify-center shrink-0 p-0.5">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0">
                 <img
                   src="/ntools-logo.png"
                   alt="nTools"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain filter drop-shadow-[0_2px_10px_rgba(6,182,212,0.45)]"
                 />
               </div>
               <div className="hidden xs:block">
@@ -935,7 +935,7 @@ export function App() {
       {/* Master Workspace View — Only Active Module Mounted for Minimal DOM & Peak 120 FPS Performance */}
       <main
         className={`flex-1 max-w-6xl w-full mx-auto px-3.5 sm:px-6 pt-3 sm:pt-4 ${
-          activeModule === 'calc' ? 'py-1 pb-20' : 'pb-28 space-y-4'
+          activeModule === 'calc' ? 'py-1 pb-24' : 'pb-36 space-y-4'
         }`}
       >
         <div key={activeModule} className={tabAnimClass}>

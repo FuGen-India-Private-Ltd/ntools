@@ -175,7 +175,7 @@ export function ImageCompressorTab() {
                   step="0.05"
                   value={quality}
                   onChange={(e) => setQuality(parseFloat(e.target.value))}
-                  className="w-full accent-black dark:accent-white cursor-pointer"
+                  className="w-full liquid-slider my-2"
                 />
                 <div className="flex justify-between text-[10px] text-slate-400">
                   <span>Smallest Size (10%)</span>

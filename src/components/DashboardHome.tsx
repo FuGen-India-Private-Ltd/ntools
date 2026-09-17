@@ -202,7 +202,7 @@ export const DashboardHome = React.memo(function DashboardHome({
   });
 
   return (
-    <div className="space-y-4 pb-24 max-w-6xl mx-auto">
+    <div className="space-y-4 pb-32 max-w-6xl mx-auto">
       {/* Real-time Search / Filter Bar with Prominent Magnifying Glass Icon */}
       <div className="relative flex items-center">
         <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex items-center pointer-events-none text-slate-400 dark:text-slate-400">

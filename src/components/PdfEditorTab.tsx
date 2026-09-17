@@ -523,7 +523,7 @@ export function PdfEditorTab({ initialBlob, initialFileName, onClearInitial }: P
                         step="2"
                         value={newFontSize}
                         onChange={(e) => setNewFontSize(Number(e.target.value))}
-                        className="w-full accent-indigo-500 cursor-pointer"
+                        className="w-full liquid-slider my-1.5"
                       />
                     </div>
 
@@ -650,7 +650,7 @@ export function PdfEditorTab({ initialBlob, initialFileName, onClearInitial }: P
                         step="0.02"
                         value={watermark.opacity}
                         onChange={(e) => setWatermark((prev) => ({ ...prev, opacity: Number(e.target.value) }))}
-                        className="w-full accent-indigo-500 cursor-pointer"
+                        className="w-full liquid-slider my-1.5"
                       />
                     </div>
 
@@ -665,7 +665,7 @@ export function PdfEditorTab({ initialBlob, initialFileName, onClearInitial }: P
                         step="4"
                         value={watermark.fontSize}
                         onChange={(e) => setWatermark((prev) => ({ ...prev, fontSize: Number(e.target.value) }))}
-                        className="w-full accent-indigo-500 cursor-pointer"
+                        className="w-full liquid-slider my-1.5"
                       />
                     </div>
                   </div>

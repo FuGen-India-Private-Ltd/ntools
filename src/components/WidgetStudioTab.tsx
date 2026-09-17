@@ -256,7 +256,7 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200">
                 <span>Glass Opacity (Auto-Applies)</span>
-                <span className="text-[10px] font-mono text-indigo-500 font-bold">{config.opacity}%</span>
+                <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-bold">{config.opacity}%</span>
               </div>
               <input
                 type="range"
@@ -265,7 +265,7 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
                 step={5}
                 value={config.opacity}
                 onChange={(e) => setConfig({ ...config, opacity: parseInt(e.target.value, 10) })}
-                className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                className="w-full liquid-slider"
               />
               <div className="flex justify-between text-[9px] text-slate-400 font-semibold px-0.5">
                 <span>Transparent (0%)</span>

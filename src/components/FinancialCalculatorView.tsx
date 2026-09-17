@@ -217,7 +217,7 @@ export function FinancialCalculatorView() {
               max="30"
               value={tenureYears}
               onChange={(e) => setTenureYears(parseInt(e.target.value, 10))}
-              className="w-full accent-black dark:accent-white cursor-pointer"
+              className="w-full liquid-slider my-2"
             />
           </div>
 

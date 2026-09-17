@@ -34,22 +34,132 @@ export interface ArcItem {
   labelKn: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
-  bgActive: string;
+  accentGrad: string;
+  glowColor: string;
+  glowHex: string;
 }
 
 export const ARC_ITEMS: ArcItem[] = [
-  { id: 'dashboard', labelEn: 'Home', labelKn: 'ಮುಖಪುಟ', icon: LayoutDashboard, color: 'text-indigo-500', bgActive: 'bg-indigo-600 text-white' },
-  { id: 'converter', labelEn: 'Sanka', labelKn: 'ಸಂಕ', icon: FileCode, color: 'text-blue-500', bgActive: 'bg-blue-600 text-white' },
-  { id: 'files', labelEn: 'Files', labelKn: 'ಫೈಲ್‌ಗಳು', icon: FolderArchive, color: 'text-rose-500', bgActive: 'bg-rose-600 text-white' },
-  { id: 'tasks', labelEn: 'Tasks', labelKn: 'ಕಾರ್ಯಗಳು', icon: ListTodo, color: 'text-teal-500', bgActive: 'bg-teal-600 text-white' },
-  { id: 'clock', labelEn: 'Clock', labelKn: 'ಗಡಿಯಾರ', icon: Clock, color: 'text-amber-500', bgActive: 'bg-amber-600 text-white' },
-  { id: 'notes', labelEn: 'Notes', labelKn: 'ಟಿಪ್ಪಣಿ', icon: StickyNote, color: 'text-purple-500', bgActive: 'bg-purple-600 text-white' },
-  { id: 'calc', labelEn: 'Calc', labelKn: 'ಕ್ಯಾಲ್ಕ್', icon: Calculator, color: 'text-emerald-500', bgActive: 'bg-emerald-600 text-white' },
-  { id: 'calendar', labelEn: 'Calendar', labelKn: 'ಕ್ಯಾಲೆಂಡರ್', icon: Calendar, color: 'text-sky-500', bgActive: 'bg-sky-600 text-white' },
-  { id: 'widgets', labelEn: 'Widgets', labelKn: 'ವಿಜೆಟ್', icon: Layers, color: 'text-pink-500', bgActive: 'bg-pink-600 text-white' },
-  { id: 'recorder', labelEn: 'Recorder', labelKn: 'ಧ್ವನಿ', icon: Mic, color: 'text-rose-500', bgActive: 'bg-rose-600 text-white' },
-  { id: 'compass', labelEn: 'Compass', labelKn: 'ದಿಕ್ಸೂಚಿ', icon: Compass, color: 'text-emerald-500', bgActive: 'bg-emerald-600 text-white' },
-  { id: 'settings', labelEn: 'Settings', labelKn: 'ಸೆಟ್ಟಿಂಗ್ಸ್', icon: Settings, color: 'text-slate-400', bgActive: 'bg-slate-700 text-white' },
+  {
+    id: 'dashboard',
+    labelEn: 'Home',
+    labelKn: 'ಮುಖಪುಟ',
+    icon: LayoutDashboard,
+    color: 'text-cyan-500',
+    accentGrad: 'from-cyan-500 via-blue-600 to-indigo-600',
+    glowColor: 'rgba(6, 182, 212, 0.45)',
+    glowHex: '#06b6d4',
+  },
+  {
+    id: 'converter',
+    labelEn: 'Sanka',
+    labelKn: 'ಸಂಕ',
+    icon: FileCode,
+    color: 'text-blue-500',
+    accentGrad: 'from-blue-500 via-indigo-600 to-violet-600',
+    glowColor: 'rgba(59, 130, 246, 0.45)',
+    glowHex: '#3b82f6',
+  },
+  {
+    id: 'files',
+    labelEn: 'Files',
+    labelKn: 'ಫೈಲ್‌ಗಳು',
+    icon: FolderArchive,
+    color: 'text-rose-500',
+    accentGrad: 'from-rose-500 via-pink-600 to-rose-700',
+    glowColor: 'rgba(244, 63, 94, 0.45)',
+    glowHex: '#f43f5e',
+  },
+  {
+    id: 'tasks',
+    labelEn: 'Tasks',
+    labelKn: 'ಕಾರ್ಯಗಳು',
+    icon: ListTodo,
+    color: 'text-teal-500',
+    accentGrad: 'from-teal-500 via-emerald-600 to-teal-700',
+    glowColor: 'rgba(20, 184, 166, 0.45)',
+    glowHex: '#14b8a6',
+  },
+  {
+    id: 'clock',
+    labelEn: 'Clock',
+    labelKn: 'ಗಡಿಯಾರ',
+    icon: Clock,
+    color: 'text-amber-500',
+    accentGrad: 'from-amber-500 via-orange-600 to-amber-700',
+    glowColor: 'rgba(245, 158, 11, 0.45)',
+    glowHex: '#f59e0b',
+  },
+  {
+    id: 'notes',
+    labelEn: 'Notes',
+    labelKn: 'ಟಿಪ್ಪಣಿ',
+    icon: StickyNote,
+    color: 'text-purple-500',
+    accentGrad: 'from-purple-500 via-violet-600 to-purple-700',
+    glowColor: 'rgba(168, 85, 247, 0.45)',
+    glowHex: '#a855f7',
+  },
+  {
+    id: 'calc',
+    labelEn: 'Calc',
+    labelKn: 'ಕ್ಯಾಲ್ಕ್',
+    icon: Calculator,
+    color: 'text-emerald-500',
+    accentGrad: 'from-emerald-500 via-teal-600 to-emerald-700',
+    glowColor: 'rgba(16, 185, 129, 0.45)',
+    glowHex: '#10b981',
+  },
+  {
+    id: 'calendar',
+    labelEn: 'Calendar',
+    labelKn: 'ಕ್ಯಾಲೆಂಡರ್',
+    icon: Calendar,
+    color: 'text-sky-500',
+    accentGrad: 'from-sky-500 via-blue-600 to-cyan-600',
+    glowColor: 'rgba(14, 165, 233, 0.45)',
+    glowHex: '#0ea5e9',
+  },
+  {
+    id: 'widgets',
+    labelEn: 'Widgets',
+    labelKn: 'ವಿಜೆಟ್',
+    icon: Layers,
+    color: 'text-pink-500',
+    accentGrad: 'from-pink-500 via-rose-600 to-fuchsia-600',
+    glowColor: 'rgba(236, 72, 153, 0.45)',
+    glowHex: '#ec4899',
+  },
+  {
+    id: 'recorder',
+    labelEn: 'Recorder',
+    labelKn: 'ಧ್ವನಿ',
+    icon: Mic,
+    color: 'text-rose-500',
+    accentGrad: 'from-rose-600 via-red-600 to-rose-700',
+    glowColor: 'rgba(225, 29, 72, 0.45)',
+    glowHex: '#e11d48',
+  },
+  {
+    id: 'compass',
+    labelEn: 'Compass',
+    labelKn: 'ದಿಕ್ಸೂಚಿ',
+    icon: Compass,
+    color: 'text-emerald-500',
+    accentGrad: 'from-emerald-500 via-teal-600 to-cyan-600',
+    glowColor: 'rgba(16, 185, 129, 0.45)',
+    glowHex: '#10b981',
+  },
+  {
+    id: 'settings',
+    labelEn: 'Settings',
+    labelKn: 'ಸೆಟ್ಟಿಂಗ್ಸ್',
+    icon: Settings,
+    color: 'text-slate-400',
+    accentGrad: 'from-slate-600 via-slate-700 to-slate-800',
+    glowColor: 'rgba(148, 163, 184, 0.45)',
+    glowHex: '#94a3b8',
+  },
 ];
 
 interface CircularArcNavigatorProps {
@@ -58,8 +168,7 @@ interface CircularArcNavigatorProps {
   lang: 'en' | 'kn';
 }
 
-const ARC_RADIUS = 130;
-const ANGLE_STEP = 36; // 36 degrees between items
+const ITEM_WIDTH = 58; // Horizontal spacing between icons
 
 export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   activeModule,
@@ -67,7 +176,6 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   lang,
 }: CircularArcNavigatorProps) {
   const numItems = ARC_ITEMS.length;
-  // Local immediate active state for instant, non-blocking dial rotation
   const [localActiveModule, setLocalActiveModule] = useState<AppModule>(activeModule);
 
   useEffect(() => {
@@ -75,13 +183,20 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   }, [activeModule]);
 
   const activeIdx = ARC_ITEMS.findIndex((item) => item.id === localActiveModule);
+  const activeItem = ARC_ITEMS[activeIdx] || ARC_ITEMS[0];
 
-  // Drag rotation state
-  const [dragOffsetDeg, setDragOffsetDeg] = useState(0);
+  // Drag state
+  const [dragOffsetPx, setDragOffsetPx] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const startXRef = useRef<number | null>(null);
 
-  // Keyboard visibility tracking based strictly on physical viewport changes
+  const startXRef = useRef<number | null>(null);
+  const lastClientXRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
+  const velocityXRef = useRef<number>(0);
+  const lastHapticStepRef = useRef<number>(0);
+  const rafRef = useRef<number | null>(null);
+
+  // Keyboard detection
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const maxRecordedHeightRef = useRef<number>(
     typeof window !== 'undefined'
@@ -95,8 +210,6 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
       if (currentH > maxRecordedHeightRef.current) {
         maxRecordedHeightRef.current = currentH;
       }
-
-      // If current height is significantly shrunk (>160px from max), the soft keyboard is open
       const diff = maxRecordedHeightRef.current - currentH;
       setIsKeyboardOpen(diff > 160);
     };
@@ -114,12 +227,6 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     };
   }, []);
 
-  const prevIdx = (activeIdx - 1 + numItems) % numItems;
-  const nextIdx = (activeIdx + 1) % numItems;
-
-  const hasMovedRef = useRef(false);
-  const rafRef = useRef<number | null>(null);
-
   const selectModule = (modId: AppModule) => {
     if (modId === localActiveModule) return;
     setLocalActiveModule(modId);
@@ -128,26 +235,43 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     setIsDragging(true);
-    hasMovedRef.current = false;
     startXRef.current = e.clientX;
-    setDragOffsetDeg(0);
+    lastClientXRef.current = e.clientX;
+    lastTimeRef.current = performance.now();
+    velocityXRef.current = 0;
+    lastHapticStepRef.current = 0;
+    setDragOffsetPx(0);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging || startXRef.current === null) return;
-    const clientX = e.clientX;
-    const deltaX = clientX - startXRef.current;
-    if (Math.abs(deltaX) > 6) {
-      hasMovedRef.current = true;
+    const now = performance.now();
+    const dt = Math.max(1, now - lastTimeRef.current);
+    const dx = e.clientX - lastClientXRef.current;
+
+    velocityXRef.current = dx / dt;
+    lastClientXRef.current = e.clientX;
+    lastTimeRef.current = now;
+
+    const totalDelta = e.clientX - startXRef.current;
+    if (Math.abs(totalDelta) > 5) {
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch (_) {}
     }
+
+    // Subtle tactile haptic click when crossing an item boundary
+    const currentStep = Math.round(totalDelta / ITEM_WIDTH);
+    if (currentStep !== lastHapticStepRef.current) {
+      lastHapticStepRef.current = currentStep;
+      if (navigator.vibrate) {
+        navigator.vibrate(8);
+      }
+    }
+
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
-      if (startXRef.current === null) return;
-      const deg = (deltaX / 100) * ANGLE_STEP;
-      setDragOffsetDeg(Math.max(-65, Math.min(65, deg)));
+      setDragOffsetPx(totalDelta);
     });
   };
 
@@ -161,54 +285,74 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     setIsDragging(false);
 
-    if (dragOffsetDeg > 18) {
-      selectModule(ARC_ITEMS[prevIdx].id);
-    } else if (dragOffsetDeg < -18) {
-      selectModule(ARC_ITEMS[nextIdx].id);
+    // Compute flick boost from swipe velocity
+    const flickDistance = Math.min(180, Math.max(-180, velocityXRef.current * 90));
+    const finalOffset = dragOffsetPx + flickDistance;
+    const steps = Math.round(-finalOffset / ITEM_WIDTH);
+
+    if (steps !== 0) {
+      const targetIdx = (activeIdx + steps + numItems * 100) % numItems;
+      selectModule(ARC_ITEMS[targetIdx].id);
+      if (navigator.vibrate) {
+        navigator.vibrate(12);
+      }
     }
 
-    setDragOffsetDeg(0);
+    setDragOffsetPx(0);
     startXRef.current = null;
   };
 
   return (
     <div
-      className={`arc-navigator-bar fixed bottom-6 sm:bottom-7 left-1/2 -translate-x-1/2 pb-[env(safe-area-inset-bottom,12px)] z-30 select-none touch-none flex flex-col items-center pointer-events-auto transition-all duration-150 ease-out ${
+      className={`arc-navigator-bar fixed bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 pb-[env(safe-area-inset-bottom,12px)] z-30 select-none touch-none flex flex-col items-center pointer-events-auto transition-all duration-200 ease-out ${
         isKeyboardOpen
           ? 'opacity-0 pointer-events-none translate-y-12'
           : 'opacity-100 translate-y-0'
       }`}
     >
-      {/* Rotating Curved Circular Arc Dial Container with Apple Liquid Glass Material */}
+      {/* Sleek Apple VisionOS / iOS 18 Liquid Glass Sliding Dock */}
       <div
-        className="relative w-[288px] sm:w-[328px] h-[68px] px-4 rounded-[34px] liquid-glass-arc-dock liquid-specular flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden"
+        className="relative w-[300px] sm:w-[340px] h-[68px] px-3 rounded-[34px] liquid-glass-arc-dock liquid-specular flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        {/* Ambient luminous jewel glow beneath the active item */}
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-32 h-10 bg-indigo-500/35 dark:bg-indigo-400/40 blur-2xl pointer-events-none rounded-full" />
+        {/* Top crystal specular refraction beam */}
+        <div className="absolute top-0 inset-x-8 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/40 to-transparent pointer-events-none" />
 
-        {/* Dynamic Rotating Items along the Circular Arc */}
+        {/* Subtle luminous jewel glow matching the active module */}
+        <div
+          className="absolute -top-2 left-1/2 -translate-x-1/2 w-28 h-9 blur-xl pointer-events-none rounded-full transition-colors duration-300"
+          style={{ backgroundColor: activeItem.glowColor }}
+        />
+
+        {/* 1:1 Smooth Continuous Sliding Carousel */}
         {ARC_ITEMS.map((item, i) => {
           const Icon = item.icon;
           const label = lang === 'kn' ? item.labelKn : item.labelEn;
 
-          // Compute shortest angular distance to current active item
+          // Shortest angular index distance to active item
           let diff = i - activeIdx;
           if (diff > numItems / 2) diff -= numItems;
           if (diff < -numItems / 2) diff += numItems;
 
-          const itemAngleDeg = diff * ANGLE_STEP + dragOffsetDeg;
-          const isVisible = Math.abs(itemAngleDeg) <= 56;
-          const isActive = Math.abs(itemAngleDeg) < 18;
+          const distPx = diff * ITEM_WIDTH + dragOffsetPx;
+          const absDist = Math.abs(distPx);
+          const isVisible = absDist <= 145;
+          const isCenter = absDist < ITEM_WIDTH * 0.45;
 
-          const rad = (itemAngleDeg * Math.PI) / 180;
-          const x = ARC_RADIUS * Math.sin(rad);
-          const y = ARC_RADIUS * (1 - Math.cos(rad));
-          const scale = isActive ? 1.08 : 0.76;
-          const opacity = !isVisible ? 0 : isActive ? 1 : 0.65;
+          const scale = isCenter
+            ? 1.15
+            : Math.max(0.68, 1.15 - (absDist / 140) * 0.42);
+          const opacity = !isVisible
+            ? 0
+            : isCenter
+            ? 1
+            : Math.max(0.35, 1 - Math.pow(absDist / 140, 1.3));
+
+          // Gentle optical elevation arc curve
+          const y = Math.pow(distPx / 110, 2) * 4;
 
           return (
             <button
@@ -216,40 +360,44 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
               type="button"
               onClick={() => {
                 selectModule(item.id);
+                if (navigator.vibrate) navigator.vibrate(10);
               }}
               style={{
-                transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
+                transform: `translate3d(${distPx}px, ${y}px, 0) scale(${scale})`,
                 opacity,
                 pointerEvents: isVisible ? 'auto' : 'none',
-                zIndex: isActive ? 20 : isVisible ? 10 : 0,
+                zIndex: isCenter ? 20 : isVisible ? 10 : 0,
                 transition: isDragging
                   ? 'none'
-                  : 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.16s ease-out',
+                  : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease-out',
               }}
-              className="absolute top-1 flex flex-col items-center gap-0.5 select-none active:scale-95 transition-transform"
+              className="absolute top-1 flex flex-col items-center gap-1 select-none active:scale-95 cursor-pointer"
               title={label}
             >
               <div
-                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center transition-all duration-150 border ${
-                  isActive
-                    ? 'bg-gradient-to-b from-indigo-500 via-indigo-600 to-indigo-700 text-white border-white/60 dark:border-white/40 shadow-[0_6px_22px_rgba(99,102,241,0.65),inset_0_1.5px_2px_rgba(255,255,255,0.85)]'
-                    : 'bg-white/20 dark:bg-white/[0.07] backdrop-blur-xl text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/14 border-white/40 dark:border-white/12 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]'
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 border ${
+                  isCenter
+                    ? `bg-gradient-to-b ${item.accentGrad} text-white border-white/60 dark:border-white/40 shadow-[0_8px_20px_rgba(0,0,0,0.3),inset_0_1.5px_2px_rgba(255,255,255,0.7)]`
+                    : 'bg-black/5 dark:bg-white/[0.08] backdrop-blur-xl text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/16 border-black/5 dark:border-white/10 shadow-sm'
                 }`}
               >
                 <Icon
-                  className={`w-5 h-5 transition-transform duration-150 ${
-                    isActive ? 'scale-110 stroke-[2.4]' : 'scale-90 stroke-[2.1]'
+                  className={`w-5 h-5 transition-transform duration-200 ${
+                    isCenter ? 'scale-110 stroke-[2.4]' : 'scale-90 stroke-[2]'
                   }`}
                 />
               </div>
 
               <div
-                className={`flex items-center gap-1 transition-opacity duration-150 ${
-                  isActive ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                className={`flex items-center gap-1 transition-opacity duration-200 ${
+                  isCenter ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
               >
-                <span className="w-1 h-1 rounded-full bg-indigo-500 dark:bg-indigo-300 animate-pulse" />
-                <span className="text-[10px] font-extrabold tracking-tight text-slate-900 dark:text-white drop-shadow-sm whitespace-nowrap">
+                <span
+                  className="w-1.5 h-1.5 rounded-full animate-pulse shadow-sm"
+                  style={{ backgroundColor: item.glowHex }}
+                />
+                <span className="text-[10px] font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm whitespace-nowrap">
                   {label}
                 </span>
               </div>

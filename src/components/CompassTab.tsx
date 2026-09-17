@@ -329,7 +329,7 @@ export function CompassTab() {
                 targetHeadingRef.current = val;
                 setHeading(val);
               }}
-              className="w-full accent-emerald-500"
+              className="w-full liquid-slider"
             />
           </div>
         )}
