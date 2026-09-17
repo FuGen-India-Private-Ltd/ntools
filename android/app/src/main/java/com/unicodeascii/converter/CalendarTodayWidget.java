@@ -42,6 +42,11 @@ public class CalendarTodayWidget extends AppWidgetProvider {
 
             PendingIntent openPending = PendingIntent.getActivity(context, 830, openAppIntent, immutableFlags);
             views.setOnClickPendingIntent(R.id.widget_cal_today_root, openPending);
+            views.setOnClickPendingIntent(R.id.widget_cal_today_dayname, openPending);
+            views.setOnClickPendingIntent(R.id.widget_cal_today_daynum, openPending);
+            views.setOnClickPendingIntent(R.id.widget_cal_today_month, openPending);
+            views.setOnClickPendingIntent(R.id.widget_cal_today_festival, openPending);
+            views.setOnClickPendingIntent(R.id.widget_cal_today_event, openPending);
 
             // Date calculations
             Calendar cal = Calendar.getInstance();

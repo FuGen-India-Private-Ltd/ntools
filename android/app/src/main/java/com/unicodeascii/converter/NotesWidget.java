@@ -124,12 +124,14 @@ public class NotesWidget extends AppWidgetProvider {
             // Click on widget note opens that specific note
             Intent openAppIntent = new Intent(context, MainActivity.class);
             openAppIntent.setAction(Intent.ACTION_VIEW);
-            String routeUri = "app://unicodeascii.converter/#notes" + (!noteIdForIntent.isEmpty() ? "?noteId=" + noteIdForIntent : "");
+            String cleanRoute = "notes" + (!noteIdForIntent.isEmpty() ? "?noteId=" + noteIdForIntent : "");
+            String routeUri = "app://unicodeascii.converter/#" + cleanRoute;
             openAppIntent.setData(Uri.parse(routeUri));
-            openAppIntent.putExtra("route", "notes");
+            openAppIntent.putExtra("route", cleanRoute);
             openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
             PendingIntent openAppPendingIntent = PendingIntent.getActivity(context, 5000 + appWidgetId, openAppIntent, immutableFlags);
+            views.setOnClickPendingIntent(R.id.widget_notes_root, openAppPendingIntent);
             views.setOnClickPendingIntent(R.id.widget_note_title, openAppPendingIntent);
             views.setOnClickPendingIntent(R.id.widget_note_snippet, openAppPendingIntent);
 
@@ -137,7 +139,7 @@ public class NotesWidget extends AppWidgetProvider {
             Intent addNoteIntent = new Intent(context, MainActivity.class);
             addNoteIntent.setAction(Intent.ACTION_VIEW);
             addNoteIntent.setData(Uri.parse("app://unicodeascii.converter/#notes?action=new"));
-            addNoteIntent.putExtra("route", "notes");
+            addNoteIntent.putExtra("route", "notes?action=new");
             addNoteIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent addNotePI = PendingIntent.getActivity(context, 5500 + appWidgetId, addNoteIntent, immutableFlags);
             views.setOnClickPendingIntent(R.id.btn_note_add, addNotePI);

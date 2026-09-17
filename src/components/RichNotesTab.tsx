@@ -43,13 +43,35 @@ function formatRelativeTime(timestamp: number): string {
 
 export function RichNotesTab() {
   const [notes, setNotes] = useState<NoteItem[]>(() => getStoredNotes());
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(() => {
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const params = new URLSearchParams(hash.split('?')[1] || '');
+      return params.get('noteId') || null;
+    } catch {}
+    return null;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [copiedFeedback, setCopiedFeedback] = useState(false);
   const [widgetPinnedNoteId, setWidgetPinnedNoteId] = useState<string | null>(() => {
     return localStorage.getItem('notes_widget_pinned_id');
   });
+
+  const handleCreateNote = () => {
+    const newNote: NoteItem = {
+      id: `note-${Date.now()}`,
+      title: '',
+      content: '',
+      category: selectedCategory !== 'all' ? (selectedCategory as NoteItem['category']) : 'personal',
+      isPinned: false,
+      isFavorite: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setNotes((prevNotes) => [newNote, ...prevNotes]);
+    setActiveNoteId(newNote.id);
+  };
 
   useEffect(() => {
     saveStoredNotes(notes);
@@ -63,8 +85,24 @@ export function RichNotesTab() {
         setActiveNoteId(targetId);
       }
     };
+    const handleCreate = () => {
+      handleCreateNote();
+    };
     window.addEventListener('open-specific-note', handleOpenNote);
-    return () => window.removeEventListener('open-specific-note', handleOpenNote);
+    window.addEventListener('create-new-note', handleCreate);
+
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const params = new URLSearchParams(hash.split('?')[1] || '');
+      if (params.get('action') === 'new') {
+        handleCreate();
+      }
+    } catch {}
+
+    return () => {
+      window.removeEventListener('open-specific-note', handleOpenNote);
+      window.removeEventListener('create-new-note', handleCreate);
+    };
   }, []);
 
   const handleToggleWidgetPin = (id: string, e?: React.MouseEvent) => {
@@ -125,21 +163,6 @@ export function RichNotesTab() {
     });
     return counts;
   }, [notes]);
-
-  const handleCreateNote = () => {
-    const newNote: NoteItem = {
-      id: `note-${Date.now()}`,
-      title: '',
-      content: '',
-      category: selectedCategory !== 'all' ? (selectedCategory as NoteItem['category']) : 'personal',
-      isPinned: false,
-      isFavorite: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    setNotes([newNote, ...notes]);
-    setActiveNoteId(newNote.id);
-  };
 
   const handleUpdateActiveNote = (updates: Partial<NoteItem>) => {
     if (!activeNoteId) return;

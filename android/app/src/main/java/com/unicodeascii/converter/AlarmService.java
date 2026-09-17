@@ -188,7 +188,15 @@ public class AlarmService extends Service {
             .addAction(R.mipmap.ic_launcher, "Snooze (10m)", snoozePI);
 
         Notification notification = builder.build();
-        startForeground(NOTIFICATION_ID, notification);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            );
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
 
         // 6. Ensure device Alarm Stream Volume is sufficiently loud
         try {

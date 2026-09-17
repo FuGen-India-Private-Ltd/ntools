@@ -52,6 +52,7 @@ public class CalendarWidget extends AppWidgetProvider {
 
             PendingIntent openAppPendingIntent = PendingIntent.getActivity(context, 601, openAppIntent, immutableFlags);
             views.setOnClickPendingIntent(R.id.widget_calendar_root, openAppPendingIntent);
+            views.setOnClickPendingIntent(R.id.widget_cal_month_title, openAppPendingIntent);
 
             Calendar cal = Calendar.getInstance();
             int todayDay = cal.get(Calendar.DAY_OF_MONTH);

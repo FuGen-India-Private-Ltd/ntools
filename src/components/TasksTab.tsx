@@ -29,7 +29,14 @@ export function TasksTab() {
   const [tasks, setTasks] = useState<TaskItem[]>(() => getStoredTasks());
   const [filterMode, setFilterMode] = useState<'all' | 'pending' | 'completed'>('pending');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAdding, setIsAdding] = useState(() => {
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const params = new URLSearchParams(hash.split('?')[1] || '');
+      return params.get('action') === 'new';
+    } catch {}
+    return false;
+  });
 
   // New task form state
   const [title, setTitle] = useState('');
@@ -43,6 +50,14 @@ export function TasksTab() {
     saveStoredTasks(tasks);
     syncTasksToNative(tasks);
   }, [tasks]);
+
+  useEffect(() => {
+    const handleCreate = () => {
+      setIsAdding(true);
+    };
+    window.addEventListener('create-new-task', handleCreate);
+    return () => window.removeEventListener('create-new-task', handleCreate);
+  }, []);
 
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();

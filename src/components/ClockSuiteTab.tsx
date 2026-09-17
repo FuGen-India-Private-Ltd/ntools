@@ -84,7 +84,16 @@ const WORLD_CITIES: WorldCity[] = [
 ];
 
 export function ClockSuiteTab() {
-  const [activeSubTab, setActiveSubTab] = useState<'alarm' | 'world' | 'stopwatch' | 'timer' | 'sleep'>('alarm');
+  const [activeSubTab, setActiveSubTab] = useState<'alarm' | 'world' | 'stopwatch' | 'timer' | 'sleep'>(() => {
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const params = new URLSearchParams(hash.split('?')[1] || '');
+      const subtab = params.get('subtab') as any;
+      const valid = ['alarm', 'world', 'stopwatch', 'timer', 'sleep'];
+      if (subtab && valid.includes(subtab)) return subtab;
+    } catch {}
+    return 'alarm';
+  });
   const [showPermissionBanner, setShowPermissionBanner] = useState<boolean>(() => {
     return localStorage.getItem('bg_alarm_banner_dismissed') !== 'true';
   });
@@ -92,6 +101,18 @@ export function ClockSuiteTab() {
   const [exactAlarmGranted, setExactAlarmGranted] = useState<boolean>(true);
   const [batteryExempt, setBatteryExempt] = useState<boolean>(true);
   const [testingPopup, setTestingPopup] = useState(false);
+
+  useEffect(() => {
+    const handleSubtab = (e: any) => {
+      const subtab = e.detail?.subtab;
+      const valid = ['alarm', 'world', 'stopwatch', 'timer', 'sleep'];
+      if (subtab && valid.includes(subtab)) {
+        setActiveSubTab(subtab);
+      }
+    };
+    window.addEventListener('open-clock-subtab', handleSubtab);
+    return () => window.removeEventListener('open-clock-subtab', handleSubtab);
+  }, []);
 
   const refreshPermissions = async () => {
     const overlay = await checkOverlayPermissionNative();

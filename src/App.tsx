@@ -14,7 +14,10 @@ import {
   testAlarmPopupNative,
   dismissAlarmNative,
   snoozeAlarmNative,
+  getPendingRouteNative,
+  clearPendingRouteNative,
 } from './lib/widgetSyncBridge';
+import { parseDeepLinkRoute, dispatchRouteFeatureEvents } from './lib/widgetRouting';
 import { AlarmItem, getStoredAlarms, saveStoredAlarms } from './lib/timeAndClock';
 import { audioAlerts } from './lib/audioAlerts';
 import { ActiveAlarmRingingModal } from './components/ActiveAlarmRingingModal';
@@ -182,31 +185,42 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const handleHash = () => {
-      const rawHash = window.location.hash.replace(/^#/, '');
-      if (!rawHash) return;
-      const [routePart, queryPart] = rawHash.split('?');
-      const validModules: AppModule[] = [
-        'dashboard', 'converter', 'files', 'tasks', 'clock',
-        'notes', 'calc', 'calendar', 'widgets', 'recorder', 'compass', 'settings'
-      ];
-      if (validModules.includes(routePart as AppModule)) {
-        setActiveModule(routePart as AppModule);
-      }
-      if (routePart === 'notes' && queryPart) {
-        const params = new URLSearchParams(queryPart);
-        const noteId = params.get('noteId');
-        if (noteId) {
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('open-specific-note', { detail: { noteId } }));
-          }, 50);
-        }
+    const handleRouteString = (rawRoute: string) => {
+      const parsed = parseDeepLinkRoute(rawRoute);
+      if (parsed.module) {
+        setActiveModule(parsed.module);
+        dispatchRouteFeatureEvents(parsed);
       }
     };
 
-    handleHash();
-    window.addEventListener('hashchange', handleHash);
-    return () => window.removeEventListener('hashchange', handleHash);
+    // 1. Initial hash route
+    handleRouteString(window.location.hash);
+
+    // 2. Cold-launch pending route check from Android MainActivity
+    getPendingRouteNative().then((pRoute) => {
+      if (pRoute) {
+        handleRouteString(pRoute);
+        clearPendingRouteNative();
+      }
+    });
+
+    // 3. Listen to browser hash changes
+    const onHashChange = () => {
+      handleRouteString(window.location.hash);
+    };
+    window.addEventListener('hashchange', onHashChange);
+
+    // 4. Listen to native deep-link custom event dispatched by MainActivity
+    const onNativeRouteNav = (e: any) => {
+      const r = e.detail?.route;
+      if (r) handleRouteString(r);
+    };
+    window.addEventListener('app-route-navigate', onNativeRouteNav);
+
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+      window.removeEventListener('app-route-navigate', onNativeRouteNav);
+    };
   }, []);
 
   useEffect(() => {

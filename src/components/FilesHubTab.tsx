@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PdfMergerTab } from './PdfMergerTab';
 import { PdfCompressorTab } from './PdfCompressorTab';
 import { PdfSplitterTab } from './PdfSplitterTab';
@@ -106,8 +106,47 @@ const TOOLS: ToolDef[] = [
 ];
 
 export const FilesHubTab = React.memo(function FilesHubTab() {
-  const [activeSubTab, setActiveSubTab] = useState<FileToolType>('pdf-merge');
+  const [activeSubTab, setActiveSubTab] = useState<FileToolType>(() => {
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const params = new URLSearchParams(hash.split('?')[1] || '');
+      const tab = params.get('tab') as FileToolType;
+      const validTools = [
+        'pdf-merge',
+        'pdf-compress',
+        'pdf-split',
+        'pdf-edit',
+        'pdf-convert',
+        'excel-convert',
+        'image-to-pdf',
+        'image-compress',
+      ];
+      if (tab && validTools.includes(tab)) return tab;
+    } catch {}
+    return 'pdf-merge';
+  });
   const [editingPdf, setEditingPdf] = useState<{ blob: Blob; fileName: string } | null>(null);
+
+  useEffect(() => {
+    const handleOpenTool = (e: any) => {
+      const tab = e.detail?.tab as FileToolType;
+      const validTools = [
+        'pdf-merge',
+        'pdf-compress',
+        'pdf-split',
+        'pdf-edit',
+        'pdf-convert',
+        'excel-convert',
+        'image-to-pdf',
+        'image-compress',
+      ];
+      if (tab && validTools.includes(tab)) {
+        setActiveSubTab(tab);
+      }
+    };
+    window.addEventListener('open-files-tool', handleOpenTool);
+    return () => window.removeEventListener('open-files-tool', handleOpenTool);
+  }, []);
 
   const handleEditInEditor = (blob: Blob, fileName: string) => {
     setEditingPdf({ blob, fileName });

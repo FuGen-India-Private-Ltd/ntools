@@ -23,6 +23,8 @@ export interface AppWidgetSyncPluginInterface {
   testAlarmPopup(): Promise<{ success: boolean }>;
   dismissAlarm(): Promise<{ success: boolean }>;
   snoozeAlarm(options?: { minutes?: number }): Promise<{ success: boolean }>;
+  getPendingRoute(): Promise<{ route: string }>;
+  clearPendingRoute(): Promise<{ success: boolean }>;
 }
 
 const AppWidgetSync = registerPlugin<AppWidgetSyncPluginInterface>('AppWidgetSyncPlugin');
@@ -244,6 +246,28 @@ export async function snoozeAlarmNative(minutes: number = 10): Promise<void> {
     }
   } catch (e) {
     console.debug('Snooze native alarm error:', e);
+  }
+}
+
+export async function getPendingRouteNative(): Promise<string | null> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const res = await AppWidgetSync.getPendingRoute();
+      return res.route || null;
+    }
+  } catch (e) {
+    console.debug('Get pending route error:', e);
+  }
+  return null;
+}
+
+export async function clearPendingRouteNative(): Promise<void> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await AppWidgetSync.clearPendingRoute();
+    }
+  } catch (e) {
+    console.debug('Clear pending route error:', e);
   }
 }
 

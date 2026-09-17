@@ -16,6 +16,7 @@ import org.json.JSONObject;
 public class TasksWidget extends AppWidgetProvider {
 
     public static final String ACTION_COMPLETE_TASK = "com.unicodeascii.converter.ACTION_COMPLETE_TASK";
+    public static final String ACTION_OPEN_TASK = "com.unicodeascii.converter.ACTION_OPEN_TASK";
     public static final String EXTRA_TASK_ID = "extra_task_id";
 
     @Override
@@ -27,6 +28,13 @@ public class TasksWidget extends AppWidgetProvider {
             if (taskId != null && !taskId.isEmpty()) {
                 markTaskComplete(context, taskId);
             }
+        } else if (ACTION_OPEN_TASK.equals(intent.getAction())) {
+            Intent openIntent = new Intent(context, MainActivity.class);
+            openIntent.setAction(Intent.ACTION_VIEW);
+            openIntent.setData(Uri.parse("app://unicodeascii.converter/#tasks"));
+            openIntent.putExtra("route", "tasks");
+            openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            context.startActivity(openIntent);
         }
     }
 
@@ -81,7 +89,7 @@ public class TasksWidget extends AppWidgetProvider {
                 mutableFlags |= PendingIntent.FLAG_MUTABLE;
             }
 
-            // Header click opens Tasks tab
+            // Header and empty view click opens Tasks tab
             Intent openAppIntent = new Intent(context, MainActivity.class);
             openAppIntent.setAction(Intent.ACTION_VIEW);
             openAppIntent.setData(Uri.parse("app://unicodeascii.converter/#tasks"));
@@ -90,7 +98,16 @@ public class TasksWidget extends AppWidgetProvider {
 
             PendingIntent openAppPendingIntent = PendingIntent.getActivity(context, 301, openAppIntent, immutableFlags);
             views.setOnClickPendingIntent(R.id.widget_tasks_header, openAppPendingIntent);
-            views.setOnClickPendingIntent(R.id.btn_widget_add_task, openAppPendingIntent);
+            views.setOnClickPendingIntent(R.id.widget_tasks_empty, openAppPendingIntent);
+
+            // Add Task button opens Tasks creation
+            Intent addTaskIntent = new Intent(context, MainActivity.class);
+            addTaskIntent.setAction(Intent.ACTION_VIEW);
+            addTaskIntent.setData(Uri.parse("app://unicodeascii.converter/#tasks?action=new"));
+            addTaskIntent.putExtra("route", "tasks?action=new");
+            addTaskIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent addTaskPI = PendingIntent.getActivity(context, 305, addTaskIntent, immutableFlags);
+            views.setOnClickPendingIntent(R.id.btn_widget_add_task, addTaskPI);
 
             // Connect scrollable ListView service
             Intent serviceIntent = new Intent(context, TasksWidgetService.class);

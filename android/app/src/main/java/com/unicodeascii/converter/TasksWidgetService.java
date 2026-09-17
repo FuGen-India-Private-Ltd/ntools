@@ -97,6 +97,14 @@ class TasksRemoteViewsFactory implements RemoteViewsService.RemoteViewsFactory {
             fillInIntent.putExtra(TasksWidget.EXTRA_TASK_ID, taskId);
             row.setOnClickFillInIntent(R.id.btn_item_complete, fillInIntent);
 
+            // FillInIntent for opening Tasks in app
+            Intent openTaskIntent = new Intent();
+            openTaskIntent.setAction(TasksWidget.ACTION_OPEN_TASK);
+            openTaskIntent.putExtra(TasksWidget.EXTRA_TASK_ID, taskId);
+            row.setOnClickFillInIntent(R.id.item_task_click_area, openTaskIntent);
+            row.setOnClickFillInIntent(R.id.item_task_title, openTaskIntent);
+            row.setOnClickFillInIntent(R.id.item_task_subtitle, openTaskIntent);
+
             return row;
         } catch (Exception e) {
             return null;

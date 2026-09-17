@@ -30,7 +30,7 @@ public class ClockWidget extends AppWidgetProvider {
     private void toggleNextAlarm(Context context) {
         try {
             SharedPreferences prefs = context.getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);
-            String alarmsJson = prefs.getString("widget_alarms_json", "[]");
+            String alarmsJson = prefs.getString(AppWidgetSyncPlugin.KEY_ALARMS, "[]");
 
             JSONArray arr = new JSONArray(alarmsJson);
             if (arr.length() > 0) {
@@ -38,14 +38,27 @@ public class ClockWidget extends AppWidgetProvider {
                 boolean current = first.optBoolean("isEnabled", true);
                 first.put("isEnabled", !current);
                 arr.put(0, first);
-                prefs.edit().putString("widget_alarms_json", arr.toString()).apply();
+                prefs.edit().putString(AppWidgetSyncPlugin.KEY_ALARMS, arr.toString()).apply();
+
+                // Reschedule exact system alarms immediately
+                BootReceiver.rescheduleAllClockAlarms(context);
+                MainActivity.dispatchJsEvent("alarms-updated");
             }
 
             AppWidgetManager manager = AppWidgetManager.getInstance(context);
             ComponentName cn = new ComponentName(context, ClockWidget.class);
             int[] ids = manager.getAppWidgetIds(cn);
-            for (int id : ids) {
-                updateAppWidget(context, manager, id);
+            if (ids != null) {
+                for (int id : ids) {
+                    updateAppWidget(context, manager, id);
+                }
+            }
+            ComponentName alarmCn = new ComponentName(context, AlarmWidget.class);
+            int[] alarmIds = manager.getAppWidgetIds(alarmCn);
+            if (alarmIds != null) {
+                for (int id : alarmIds) {
+                    AlarmWidget.updateAppWidget(context, manager, id);
+                }
             }
         } catch (Exception ignored) {}
     }
@@ -66,7 +79,7 @@ public class ClockWidget extends AppWidgetProvider {
                 immutableFlags |= PendingIntent.FLAG_IMMUTABLE;
             }
 
-            // Click on widget root opens Clock tab
+            // Click on widget root or clock numerals opens Clock tab
             Intent openAppIntent = new Intent(context, MainActivity.class);
             openAppIntent.setAction(Intent.ACTION_VIEW);
             openAppIntent.setData(Uri.parse("app://unicodeascii.converter/#clock"));
@@ -75,6 +88,17 @@ public class ClockWidget extends AppWidgetProvider {
 
             PendingIntent openAppPendingIntent = PendingIntent.getActivity(context, 801, openAppIntent, immutableFlags);
             views.setOnClickPendingIntent(R.id.widget_clock_root, openAppPendingIntent);
+            views.setOnClickPendingIntent(R.id.widget_clock_time, openAppPendingIntent);
+            views.setOnClickPendingIntent(R.id.widget_clock_date, openAppPendingIntent);
+
+            // Click on alarm preview row opens Alarms subtab directly
+            Intent openAlarmIntent = new Intent(context, MainActivity.class);
+            openAlarmIntent.setAction(Intent.ACTION_VIEW);
+            openAlarmIntent.setData(Uri.parse("app://unicodeascii.converter/#clock?subtab=alarm"));
+            openAlarmIntent.putExtra("route", "clock?subtab=alarm");
+            openAlarmIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent openAlarmPI = PendingIntent.getActivity(context, 803, openAlarmIntent, immutableFlags);
+            views.setOnClickPendingIntent(R.id.widget_clock_alarm_text, openAlarmPI);
 
             // Toggle button click
             Intent toggleIntent = new Intent(context, ClockWidget.class);

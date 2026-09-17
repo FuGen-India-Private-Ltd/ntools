@@ -26,10 +26,10 @@ public class QuickLaunchWidget extends AppWidgetProvider {
             views.setOnClickPendingIntent(R.id.btn_widget_converter, getPendingIntentForRoute(context, "converter", 101));
 
             // 2. PDF Compressor
-            views.setOnClickPendingIntent(R.id.btn_widget_pdf, getPendingIntentForRoute(context, "pdf-compress", 102));
+            views.setOnClickPendingIntent(R.id.btn_widget_pdf, getPendingIntentForRoute(context, "files?tab=pdf-compress", 102));
 
             // 3. Image Compressor
-            views.setOnClickPendingIntent(R.id.btn_widget_image, getPendingIntentForRoute(context, "compressor", 103));
+            views.setOnClickPendingIntent(R.id.btn_widget_image, getPendingIntentForRoute(context, "files?tab=image-compress", 103));
 
             // 4. Notes
             views.setOnClickPendingIntent(R.id.btn_widget_notes, getPendingIntentForRoute(context, "notes", 104));

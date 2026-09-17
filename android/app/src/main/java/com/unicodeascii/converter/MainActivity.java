@@ -185,6 +185,8 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    public static String pendingRoute = null;
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -197,16 +199,64 @@ public class MainActivity extends BridgeActivity {
     private void handleIntent(Intent intent) {
         if (intent == null) return;
         try {
-            String route = intent.getStringExtra("route");
-            if (route != null && !route.isEmpty()) {
-                if (getBridge() != null && getBridge().getWebView() != null) {
-                    getBridge().getWebView().post(() -> {
-                        try {
-                            getBridge().getWebView().evaluateJavascript("window.location.hash = '" + route + "';", null);
-                        } catch (Exception ignored) {}
-                    });
+            String route = null;
+
+            // 1. Check intent URI data (e.g. app://unicodeascii.converter/#calendar or app://unicodeascii.converter/#notes?noteId=123)
+            android.net.Uri data = intent.getData();
+            if (data != null) {
+                String fragment = data.getFragment();
+                if (fragment != null && !fragment.trim().isEmpty()) {
+                    route = fragment.trim();
+                } else {
+                    String path = data.getPath();
+                    if (path != null && path.length() > 1) {
+                        route = path.substring(1).trim();
+                    }
                 }
             }
+
+            // 2. Fallback to extra string "route"
+            if (route == null || route.isEmpty()) {
+                route = intent.getStringExtra("route");
+            }
+
+            if (route != null && !route.trim().isEmpty()) {
+                if (route.startsWith("#")) {
+                    route = route.substring(1);
+                }
+                pendingRoute = route;
+                final String finalRoute = route;
+
+                // Dispatch to WebView via hash and CustomEvent
+                deliverRouteToWebView(finalRoute);
+            }
         } catch (Exception ignored) {}
+    }
+
+    private void deliverRouteToWebView(String route) {
+        if (route == null || route.isEmpty()) return;
+        final String safeRoute = route.replace("'", "\\'");
+
+        Runnable dispatchNav = () -> {
+            try {
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    getBridge().getWebView().evaluateJavascript(
+                        "(function() { " +
+                        "  try { " +
+                        "    window.location.hash = '" + safeRoute + "'; " +
+                        "    window.dispatchEvent(new CustomEvent('app-route-navigate', { detail: { route: '" + safeRoute + "' } })); " +
+                        "  } catch(e) {} " +
+                        "})()", null
+                    );
+                }
+            } catch (Exception ignored) {}
+        };
+
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().post(dispatchNav);
+            // Re-dispatch after short delay to ensure React components mounted during cold boot
+            getBridge().getWebView().postDelayed(dispatchNav, 350);
+            getBridge().getWebView().postDelayed(dispatchNav, 900);
+        }
     }
 }

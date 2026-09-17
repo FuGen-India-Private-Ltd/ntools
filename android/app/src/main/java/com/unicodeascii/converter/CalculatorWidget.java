@@ -261,6 +261,7 @@ public class CalculatorWidget extends AppWidgetProvider {
 
             PendingIntent openPending = PendingIntent.getActivity(context, 701, openAppIntent, immutableFlags);
             views.setOnClickPendingIntent(R.id.btn_calc_enlarge, openPending);
+            views.setOnClickPendingIntent(R.id.widget_calc_display, openPending);
 
             // Read display value
             SharedPreferences prefs = context.getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);

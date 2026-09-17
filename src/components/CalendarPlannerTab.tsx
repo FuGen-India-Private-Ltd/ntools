@@ -33,12 +33,29 @@ import {
 } from 'lucide-react';
 
 export const CalendarPlannerTab = React.memo(function CalendarPlannerTab() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const params = new URLSearchParams(hash.split('?')[1] || '');
+      const date = params.get('date');
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    } catch {}
+    return new Date().toISOString().split('T')[0];
+  });
+  const [currentDate, setCurrentDate] = useState(() => {
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const params = new URLSearchParams(hash.split('?')[1] || '');
+      const date = params.get('date');
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        const [y, m, d] = date.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      }
+    } catch {}
+    return new Date();
+  });
   const [events, setEvents] = useState<CalendarEvent[]>(() => getStoredCalendarEvents());
   const [tasks] = useState<TaskItem[]>(() => getStoredTasks());
-  const [selectedDateStr, setSelectedDateStr] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
   const [, startTransition] = useTransition();
 
   const handleSelectDate = (dateStr: string) => {
@@ -46,6 +63,19 @@ export const CalendarPlannerTab = React.memo(function CalendarPlannerTab() {
       setSelectedDateStr(dateStr);
     });
   };
+
+  useEffect(() => {
+    const handleOpenDate = (e: any) => {
+      const date = e.detail?.date;
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        handleSelectDate(date);
+        const [y, m, d] = date.split('-').map(Number);
+        setCurrentDate(new Date(y, m - 1, d));
+      }
+    };
+    window.addEventListener('open-calendar-date', handleOpenDate);
+    return () => window.removeEventListener('open-calendar-date', handleOpenDate);
+  }, []);
 
 
   // Add Event / Birthday Modal State

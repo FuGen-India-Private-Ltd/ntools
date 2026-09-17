@@ -41,88 +41,118 @@ public class BootReceiver extends BroadcastReceiver {
             JSONArray arr = new JSONArray(alarmsJsonStr);
 
             for (int i = 0; i < arr.length(); i++) {
-                JSONObject alarm = arr.getJSONObject(i);
-                if (!alarm.optBoolean("isEnabled", false)) continue;
+                try {
+                    JSONObject alarm = arr.getJSONObject(i);
+                    String id = alarm.optString("id", "alarm_" + i);
 
-                String time = alarm.optString("time", "07:00");
-                String label = alarm.optString("label", "Alarm");
-                String id = alarm.optString("id", "alarm_" + i);
-                String soundType = alarm.optString("soundType", "twin_bell");
-
-                String[] timeParts = time.split(":");
-                if (timeParts.length == 2) {
-                    int hour = Integer.parseInt(timeParts[0]);
-                    int min = Integer.parseInt(timeParts[1]);
-
-                    JSONArray daysArr = alarm.optJSONArray("days");
-                    List<Integer> daysList = new ArrayList<>();
-                    if (daysArr != null) {
-                        for (int d = 0; d < daysArr.length(); d++) {
-                            daysList.add(daysArr.getInt(d));
-                        }
+                    if (!alarm.optBoolean("isEnabled", false)) {
+                        // Cancel obsolete or disabled alarm pending intent
+                        try {
+                            Intent cancelIntent = new Intent(context, AlarmReceiver.class);
+                            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+                            PendingIntent cancelPI = PendingIntent.getBroadcast(context, id.hashCode(), cancelIntent, flags);
+                            alarmManager.cancel(cancelPI);
+                        } catch (Exception ignored) {}
+                        continue;
                     }
 
-                    Calendar targetCal = Calendar.getInstance();
-                    targetCal.set(Calendar.HOUR_OF_DAY, hour);
-                    targetCal.set(Calendar.MINUTE, min);
-                    targetCal.set(Calendar.SECOND, 0);
-                    targetCal.set(Calendar.MILLISECOND, 0);
+                    String time = alarm.optString("time", "07:00");
+                    String label = alarm.optString("label", "Alarm");
+                    String soundType = alarm.optString("soundType", "twin_bell");
 
-                    if (daysList.isEmpty()) {
-                        // If time has passed today (<= now), schedule for tomorrow
-                        if (targetCal.getTimeInMillis() <= now) {
-                            targetCal.add(Calendar.DAY_OF_YEAR, 1);
-                        }
-                    } else {
-                        boolean found = false;
-                        for (int daysAhead = 0; daysAhead < 7; daysAhead++) {
-                            Calendar checkCal = Calendar.getInstance();
-                            checkCal.setTimeInMillis(now);
-                            checkCal.add(Calendar.DAY_OF_YEAR, daysAhead);
-                            checkCal.set(Calendar.HOUR_OF_DAY, hour);
-                            checkCal.set(Calendar.MINUTE, min);
-                            checkCal.set(Calendar.SECOND, 0);
-                            checkCal.set(Calendar.MILLISECOND, 0);
+                    String[] timeParts = time.split(":");
+                    if (timeParts.length == 2) {
+                        int hour = Integer.parseInt(timeParts[0].trim());
+                        int min = Integer.parseInt(timeParts[1].trim());
 
-                            int jsDayOfWeek = checkCal.get(Calendar.DAY_OF_WEEK) - 1;
-                            if (daysList.contains(jsDayOfWeek) && checkCal.getTimeInMillis() > now) {
-                                targetCal = checkCal;
-                                found = true;
-                                break;
+                        JSONArray daysArr = alarm.optJSONArray("days");
+                        List<Integer> daysList = new ArrayList<>();
+                        if (daysArr != null) {
+                            for (int d = 0; d < daysArr.length(); d++) {
+                                daysList.add(daysArr.getInt(d));
                             }
                         }
-                        if (!found) {
-                            targetCal.add(Calendar.DAY_OF_YEAR, 7);
+
+                        Calendar targetCal = Calendar.getInstance();
+                        targetCal.set(Calendar.HOUR_OF_DAY, hour);
+                        targetCal.set(Calendar.MINUTE, min);
+                        targetCal.set(Calendar.SECOND, 0);
+                        targetCal.set(Calendar.MILLISECOND, 0);
+
+                        if (daysList.isEmpty()) {
+                            // If time has passed today (<= now), schedule for tomorrow
+                            if (targetCal.getTimeInMillis() <= now) {
+                                targetCal.add(Calendar.DAY_OF_YEAR, 1);
+                            }
+                        } else {
+                            boolean found = false;
+                            for (int daysAhead = 0; daysAhead < 7; daysAhead++) {
+                                Calendar checkCal = Calendar.getInstance();
+                                checkCal.setTimeInMillis(now);
+                                checkCal.add(Calendar.DAY_OF_YEAR, daysAhead);
+                                checkCal.set(Calendar.HOUR_OF_DAY, hour);
+                                checkCal.set(Calendar.MINUTE, min);
+                                checkCal.set(Calendar.SECOND, 0);
+                                checkCal.set(Calendar.MILLISECOND, 0);
+
+                                int jsDayOfWeek = checkCal.get(Calendar.DAY_OF_WEEK) - 1;
+                                if (daysList.contains(jsDayOfWeek) && checkCal.getTimeInMillis() > now) {
+                                    targetCal = checkCal;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                targetCal.add(Calendar.DAY_OF_YEAR, 7);
+                            }
+                        }
+
+                        long triggerAt = targetCal.getTimeInMillis();
+
+                        // 1. Set High-Priority Exact Alarm via AlarmClockInfo
+                        Intent alarmIntent = new Intent(context, AlarmReceiver.class);
+                        alarmIntent.putExtra("alarmId", id);
+                        alarmIntent.putExtra("alarmTime", time);
+                        alarmIntent.putExtra("alarmLabel", label);
+                        alarmIntent.putExtra("alarmSound", soundType);
+
+                        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+
+                        PendingIntent pi = PendingIntent.getBroadcast(context, id.hashCode(), alarmIntent, flags);
+
+                        Intent showIntent = new Intent(context, MainActivity.class);
+                        showIntent.putExtra("route", "clock");
+                        showIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        PendingIntent showPI = PendingIntent.getActivity(context, (id + "_show").hashCode(), showIntent, flags);
+
+                        try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(triggerAt, showPI);
+                                alarmManager.setAlarmClock(info, pi);
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                            } else {
+                                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                            }
+                        } catch (SecurityException se) {
+                            // Graceful fallback if exact alarm permission was denied or restricted
+                            try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                                } else {
+                                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                                }
+                            } catch (Exception seFallback) {
+                                try {
+                                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                                } catch (Exception ignored) {}
+                            }
                         }
                     }
-
-                    long triggerAt = targetCal.getTimeInMillis();
-
-                    // 1. Set High-Priority Exact Alarm via AlarmClockInfo
-                    Intent alarmIntent = new Intent(context, AlarmReceiver.class);
-                    alarmIntent.putExtra("alarmId", id);
-                    alarmIntent.putExtra("alarmTime", time);
-                    alarmIntent.putExtra("alarmLabel", label);
-                    alarmIntent.putExtra("alarmSound", soundType);
-
-                    int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
-
-                    PendingIntent pi = PendingIntent.getBroadcast(context, id.hashCode(), alarmIntent, flags);
-
-                    Intent showIntent = new Intent(context, MainActivity.class);
-                    showIntent.putExtra("route", "clock");
-                    showIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                    PendingIntent showPI = PendingIntent.getActivity(context, (id + "_show").hashCode(), showIntent, flags);
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(triggerAt, showPI);
-                        alarmManager.setAlarmClock(info, pi);
-                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
-                    } else {
-                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
-                    }
+                } catch (Exception itemEx) {
+                    itemEx.printStackTrace();
                 }
             }
         } catch (Exception ignored) {}

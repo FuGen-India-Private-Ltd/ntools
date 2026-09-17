@@ -274,6 +274,21 @@ public class AppWidgetSyncPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getPendingRoute(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("route", MainActivity.pendingRoute != null ? MainActivity.pendingRoute : "");
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void clearPendingRoute(PluginCall call) {
+        MainActivity.pendingRoute = null;
+        JSObject ret = new JSObject();
+        ret.put("success", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void openAppDetailsSettings(PluginCall call) {
         try {
             Activity act = getActivity();
