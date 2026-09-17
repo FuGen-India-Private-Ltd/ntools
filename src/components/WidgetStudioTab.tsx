@@ -173,11 +173,8 @@ export const WidgetStudioTab = React.memo(function WidgetStudioTab() {
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Widget Customizer Studio</span>
+              <span>Widget Customizer</span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Personalize colors, background styles, and corner radius for your home screen widgets.
-            </p>
           </div>
         </div>
 

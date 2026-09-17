@@ -247,7 +247,7 @@ export function App() {
       setHasOverlayPermission(perms.overlay);
       setHasExactAlarmPermission(perms.exactAlarm);
 
-      const userDismissed = localStorage.getItem('entrance_permissions_dismissed') === 'true';
+      const userDismissed = localStorage.getItem('entrance_permissions_v2_dismissed') === 'true';
       if (!userDismissed && !perms.allEssentialGranted) {
         setShowEntrancePermissionModal(true);
       }
@@ -784,7 +784,7 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    localStorage.setItem('entrance_permissions_dismissed', 'true');
+                    localStorage.setItem('entrance_permissions_v2_dismissed', 'true');
                     setShowEntrancePermissionModal(false);
                   }}
                   className="w-1/2 py-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-semibold transition text-center"

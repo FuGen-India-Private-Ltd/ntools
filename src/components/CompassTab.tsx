@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Compass as CompassIcon,
   Sparkles,
@@ -150,7 +150,7 @@ export function CompassTab() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Digital Compass &amp; Level
+                Compass &amp; Level
               </h2>
               {hasSensor ? (
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
@@ -162,9 +162,6 @@ export function CompassTab() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              360° Magnetic Heading, Direction &amp; 2-Axis Surface Level
-            </p>
           </div>
         </div>
 

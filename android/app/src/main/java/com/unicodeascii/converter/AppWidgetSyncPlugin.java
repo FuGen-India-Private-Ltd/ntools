@@ -304,7 +304,8 @@ public class AppWidgetSyncPlugin extends Plugin {
         ret.put("overlay", overlay);
         ret.put("notifications", notifications);
         ret.put("audioRecord", audioRecord);
-        ret.put("allEssentialGranted", exactAlarm && batteryExempt && overlay);
+        boolean allEssential = exactAlarm && batteryExempt && overlay && notifications && audioRecord;
+        ret.put("allEssentialGranted", allEssential);
         call.resolve(ret);
     }
 

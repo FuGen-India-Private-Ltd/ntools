@@ -306,24 +306,28 @@ export async function checkAllStartupPermissionsNative(): Promise<{
   };
 }
 
-export async function requestNotificationPermissionNative(): Promise<void> {
+export async function requestNotificationPermissionNative(): Promise<{ success: boolean }> {
   try {
     if (Capacitor.isNativePlatform()) {
-      await AppWidgetSync.requestNotificationPermission();
+      const res = await AppWidgetSync.requestNotificationPermission();
+      return { success: !!res.success };
     }
   } catch (e) {
     console.debug('requestNotificationPermission error:', e);
   }
+  return { success: true };
 }
 
-export async function requestAudioPermissionNative(): Promise<void> {
+export async function requestAudioPermissionNative(): Promise<{ granted: boolean }> {
   try {
     if (Capacitor.isNativePlatform()) {
-      await AppWidgetSync.requestAudioPermission();
+      const res = await AppWidgetSync.requestAudioPermission();
+      return { granted: !!res.success };
     }
   } catch (e) {
     console.debug('requestAudioPermission error:', e);
   }
+  return { granted: true };
 }
 
 

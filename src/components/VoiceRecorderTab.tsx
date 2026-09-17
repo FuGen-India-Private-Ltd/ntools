@@ -21,6 +21,11 @@ import {
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { saveAndDownloadFile, showToast } from '../lib/fileDownloader';
+import {
+  checkAllStartupPermissionsNative,
+  requestAudioPermissionNative,
+  openAppDetailsSettingsNative,
+} from '../lib/widgetSyncBridge';
 
 export type RecordingCategory = 'note' | 'meeting' | 'lecture' | 'idea' | 'interview';
 
@@ -248,10 +253,49 @@ export function VoiceRecorderTab() {
     render();
   };
 
+  const handleGrantMicPermission = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const res = await requestAudioPermissionNative();
+        if (res.granted) {
+          setMicPermissionError(null);
+          startRecording();
+          return;
+        } else {
+          await openAppDetailsSettingsNative();
+          return;
+        }
+      }
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicPermissionError(null);
+    } catch {
+      if (Capacitor.isNativePlatform()) {
+        await openAppDetailsSettingsNative();
+      }
+    }
+  };
+
   const startRecording = async () => {
     setMicPermissionError(null);
     setSaveSuccessNotice(null);
     livePeaksRef.current = [];
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const perms = await checkAllStartupPermissionsNative();
+        if (!perms.audioRecord) {
+          const req = await requestAudioPermissionNative();
+          if (!req.granted) {
+            setMicPermissionError(
+              'Microphone permission is required to record audio.'
+            );
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Native permission check error:', err);
+      }
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -332,7 +376,7 @@ export function VoiceRecorderTab() {
 
           setRecordings((prev) => [newRecording, ...prev]);
           setSaveSuccessNotice(
-            `Saved "${newRecording.name}". Ready in your recordings list.`
+            `Saved "${newRecording.name}".`
           );
         };
 
@@ -357,7 +401,7 @@ export function VoiceRecorderTab() {
     } catch (err: any) {
       console.error('Microphone error:', err);
       setMicPermissionError(
-        'Microphone access was denied or not available. Please allow microphone permission in Android settings.'
+        'Microphone permission is needed to record audio.'
       );
     }
   };
@@ -544,39 +588,50 @@ export function VoiceRecorderTab() {
       {/* Hidden audio element for playback */}
       <audio ref={audioElementRef} className="hidden" />
 
-      {/* Header Banner with Apple Liquid Glass styling */}
-      <div className="p-4 sm:p-6 rounded-3xl liquid-glass liquid-specular shadow-sm flex items-center justify-between gap-3">
+      {/* Header */}
+      <div className="p-4 sm:p-5 rounded-3xl liquid-glass liquid-specular shadow-sm flex items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-sm border border-rose-500/20">
-            <Mic className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-sm border border-rose-500/20">
+            <Mic className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Voice Recorder Studio
-              </h2>
-              <span className="text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                48 kHz HD
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              High-fidelity audio deck with live frequency visualizer &amp; public storage export.
-            </p>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              Voice Recorder
+            </h2>
           </div>
-        </div>
-
-        {/* Storage Location Badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl liquid-glass-btn text-[11px] font-bold text-slate-600 dark:text-slate-300">
-          <Sparkles className="w-3.5 h-3.5 text-rose-500" />
-          <span>Documents/nTools/Recordings</span>
         </div>
       </div>
 
       {/* Mic Permission Error Alert */}
       {micPermissionError && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-rose-600 dark:text-rose-300 text-xs">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          <p className="leading-relaxed">{micPermissionError}</p>
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-600 dark:text-rose-300 text-xs">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">{micPermissionError}</p>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={handleGrantMicPermission}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition active:scale-95 shadow-sm"
+            >
+              Grant Permission
+            </button>
+            <button
+              type="button"
+              onClick={() => openAppDetailsSettingsNative()}
+              className="px-3 py-1.5 rounded-xl liquid-glass-btn text-slate-700 dark:text-slate-200 font-bold text-xs transition active:scale-95 border border-black/10 dark:border-white/10"
+            >
+              Settings
+            </button>
+            <button
+              type="button"
+              onClick={() => setMicPermissionError(null)}
+              className="p-1 hover:text-rose-800 dark:hover:text-rose-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -645,7 +700,7 @@ export function VoiceRecorderTab() {
               </>
             ) : (
               <span className="text-slate-500 dark:text-slate-400">
-                Ready to Record • 48kHz HD Audio
+                Ready to Record
               </span>
             )}
           </div>
@@ -667,11 +722,8 @@ export function VoiceRecorderTab() {
               className="w-full h-full"
             />
           ) : (
-            <div className="flex flex-col items-center justify-center gap-1.5 opacity-30">
+            <div className="flex items-center justify-center opacity-25">
               <AudioWaveform className="w-7 h-7 text-slate-400" />
-              <span className="text-xs font-semibold text-slate-400">
-                Live frequency spectrum will pulse here while speaking
-              </span>
             </div>
           )}
         </div>
@@ -867,8 +919,8 @@ export function VoiceRecorderTab() {
             </p>
             <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
               {recordings.length === 0
-                ? 'Tap the red microphone button above to record your first HD voice note.'
-                : 'Try clearing your search or category filter to view all recordings.'}
+                ? 'Tap the microphone button above to start recording.'
+                : 'Try clearing your search or filter to view all recordings.'}
             </p>
           </div>
         ) : (

@@ -19,6 +19,7 @@ import {
   getAllCustomAudioTracks,
   CustomAudioTrack,
 } from '../lib/customAudioStorage';
+import { Capacitor } from '@capacitor/core';
 import {
   syncAlarmsToNative,
   syncPomodoroToNative,
@@ -32,6 +33,8 @@ import {
   requestBatteryOptimizationExemptionNative,
   checkBatteryOptimizationExemptNative,
   openAppDetailsSettingsNative,
+  checkAllStartupPermissionsNative,
+  requestNotificationPermissionNative,
 } from '../lib/widgetSyncBridge';
 import {
   Clock as ClockIcon,
@@ -190,8 +193,33 @@ export function ClockSuiteTab() {
     };
   }, [activeSubTab]);
 
+  const ensureAlarmPermissions = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      const perms = await checkAllStartupPermissionsNative();
+      if (!perms.exactAlarm) {
+        await requestExactAlarmPermissionNative();
+      }
+      if (!perms.notifications) {
+        await requestNotificationPermissionNative();
+      }
+      if (!perms.overlay) {
+        await requestOverlayPermissionNative();
+      }
+      if (!perms.batteryExempt) {
+        await requestBatteryOptimizationExemptionNative();
+      }
+    } catch (e) {
+      console.debug('Alarm permissions check notice:', e);
+    }
+  };
+
   const handleToggleAlarm = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    const alarm = alarms.find((a) => a.id === id);
+    if (alarm && !alarm.isEnabled) {
+      ensureAlarmPermissions();
+    }
     setAlarms(
       alarms.map((a) => (a.id === id ? { ...a, isEnabled: !a.isEnabled } : a))
     );
@@ -278,6 +306,7 @@ export function ClockSuiteTab() {
     e.preventDefault();
     audioAlerts.stopCurrentAlarm();
     setPlayingAlarmSoundId(null);
+    ensureAlarmPermissions();
 
     if (editingAlarmId) {
       // Update existing alarm
@@ -345,6 +374,7 @@ export function ClockSuiteTab() {
   }, [alarms]);
 
   const handleQuickNapAlarm = (minutes: number, label: string) => {
+    ensureAlarmPermissions();
     const target = new Date(Date.now() + minutes * 60000);
     const h = target.getHours().toString().padStart(2, '0');
     const m = target.getMinutes().toString().padStart(2, '0');
@@ -472,6 +502,12 @@ export function ClockSuiteTab() {
   const timerIntervalRef = useRef<any>(null);
 
   const startTimer = () => {
+    if (Capacitor.isNativePlatform()) {
+      checkAllStartupPermissionsNative().then((perms) => {
+        if (!perms.exactAlarm) requestExactAlarmPermissionNative();
+        if (!perms.notifications) requestNotificationPermissionNative();
+      }).catch(() => {});
+    }
     let targetSec = timerSecondsLeft;
     if (!isTimerActive) {
       const totalSec = timerHours * 3600 + timerMinutes * 60 + timerSeconds;
@@ -629,6 +665,12 @@ export function ClockSuiteTab() {
   };
 
   const startFocusSession = () => {
+    if (Capacitor.isNativePlatform()) {
+      checkAllStartupPermissionsNative().then((perms) => {
+        if (!perms.exactAlarm) requestExactAlarmPermissionNative();
+        if (!perms.notifications) requestNotificationPermissionNative();
+      }).catch(() => {});
+    }
     let secs = focusSecondsLeft;
     if (secs <= 0) {
       secs = focusDurationMins * 60;

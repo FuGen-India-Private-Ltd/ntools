@@ -24,12 +24,43 @@ public class MainActivity extends BridgeActivity {
                 ws.setDatabaseEnabled(true);
                 ws.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
                 wv.setLayerType(android.view.View.LAYER_TYPE_NONE, null);
+
+                wv.setWebChromeClient(new com.getcapacitor.BridgeWebChromeClient(getBridge()) {
+                    @Override
+                    public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+                        MainActivity.this.runOnUiThread(() -> {
+                            boolean hasAudio = false;
+                            for (String res : request.getResources()) {
+                                if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res)) {
+                                    hasAudio = true;
+                                    break;
+                                }
+                            }
+                            if (hasAudio) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                        request.grant(request.getResources());
+                                    } else {
+                                        pendingPermissionRequest = request;
+                                        requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 101);
+                                    }
+                                } else {
+                                    request.grant(request.getResources());
+                                }
+                            } else {
+                                request.grant(request.getResources());
+                            }
+                        });
+                    }
+                });
             }
         } catch (Exception ignored) {}
         try {
             handleIntent(getIntent());
         } catch (Exception ignored) {}
     }
+
+    public static android.webkit.PermissionRequest pendingPermissionRequest = null;
 
     @Override
     public void onPause() {
@@ -75,6 +106,24 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (pendingPermissionRequest != null) {
+            boolean audioGranted = false;
+            if (permissions != null && grantResults != null) {
+                for (int i = 0; i < permissions.length; i++) {
+                    if (android.Manifest.permission.RECORD_AUDIO.equals(permissions[i]) && grantResults.length > i && grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                        audioGranted = true;
+                    }
+                }
+            }
+            try {
+                if (audioGranted) {
+                    pendingPermissionRequest.grant(pendingPermissionRequest.getResources());
+                } else {
+                    pendingPermissionRequest.deny();
+                }
+            } catch (Exception ignored) {}
+            pendingPermissionRequest = null;
+        }
         dispatchJsEvent("permissions-updated");
     }
 
