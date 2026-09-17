@@ -11,9 +11,14 @@ import {
   AlertCircle,
   CheckCircle2,
   FileCode,
+  FileEdit,
 } from 'lucide-react';
 
-export function PdfSplitterTab() {
+export interface PdfSplitterTabProps {
+  onEditInEditor?: (blob: Blob, fileName: string) => void;
+}
+
+export function PdfSplitterTab({ onEditInEditor }: PdfSplitterTabProps = {}) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState<number>(0);
   const [splitMode, setSplitMode] = useState<'range' | 'extract-all'>('range');
@@ -251,20 +256,34 @@ export function PdfSplitterTab() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              saveAndDownloadFile(
-                result.blob,
-                result.fileName,
-                result.isZip ? 'application/zip' : 'application/pdf'
-              )
-            }
-            className="liquid-glass-accent w-full py-2.5 px-4 rounded-2xl text-slate-950 text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-          >
-            <Download className="w-4 h-4" />
-            <span>Download {result.isZip ? 'ZIP Archive' : 'Extracted PDF'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                saveAndDownloadFile(
+                  result.blob,
+                  result.fileName,
+                  result.isZip ? 'application/zip' : 'application/pdf'
+                )
+              }
+              className="liquid-glass-accent flex-1 py-2.5 px-4 rounded-2xl text-slate-950 text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download {result.isZip ? 'ZIP Archive' : 'Extracted PDF'}</span>
+            </button>
+
+            {!result.isZip && onEditInEditor && (
+              <button
+                type="button"
+                onClick={() => onEditInEditor(result.blob, result.fileName)}
+                className="liquid-glass-btn py-2.5 px-4 rounded-2xl text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                title="Edit in PDF Editor"
+              >
+                <FileEdit className="w-4 h-4 text-indigo-500" />
+                <span>Edit PDF</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

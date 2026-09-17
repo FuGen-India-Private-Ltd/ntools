@@ -4,6 +4,7 @@
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
+        android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -261,6 +262,12 @@
             android:name=".CalendarReminderReceiver"
             android:exported="false" />
 
+        <!-- Foreground Service for Guaranteed Continuous Alarm Playback and Ringing -->
+        <service
+            android:name=".AlarmService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="false" />
+
         <!-- Boot Receiver to Re-register Alarms after Device Restart -->
         <receiver
             android:name=".BootReceiver"
@@ -268,6 +275,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
@@ -280,6 +288,7 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

@@ -22,9 +22,14 @@ import {
   AlertCircle,
   FileCheck,
   Eye,
+  FileEdit,
 } from 'lucide-react';
 
-export function ExcelToPdfConverter() {
+export interface ExcelToPdfConverterProps {
+  onEditInEditor?: (blob: Blob, fileName: string) => void;
+}
+
+export function ExcelToPdfConverter({ onEditInEditor }: ExcelToPdfConverterProps = {}) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [sheets, setSheets] = useState<ExcelSheetData[]>([]);
   const [selectedSheetIdx, setSelectedSheetIdx] = useState<number>(0);
@@ -457,16 +462,28 @@ export function ExcelToPdfConverter() {
                 <button
                   type="button"
                   onClick={() => saveAndDownloadFile(result.pdfBlob, result.pdfFileName, 'application/pdf')}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl liquid-glass-accent text-xs font-bold shadow-lg transition active:scale-95"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl liquid-glass-accent text-xs font-bold shadow-lg transition active:scale-95 cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download PDF</span>
                 </button>
 
+                {onEditInEditor && (
+                  <button
+                    type="button"
+                    onClick={() => onEditInEditor(result.pdfBlob, result.pdfFileName)}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl liquid-glass-btn text-indigo-600 dark:text-indigo-400 text-xs font-bold transition active:scale-95 cursor-pointer"
+                    title="Open in PDF Editor"
+                  >
+                    <FileEdit className="w-4 h-4 text-indigo-500" />
+                    <span>Edit PDF</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl liquid-glass-btn text-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl liquid-glass-btn text-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95 cursor-pointer"
                   title="Convert Another Spreadsheet"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />

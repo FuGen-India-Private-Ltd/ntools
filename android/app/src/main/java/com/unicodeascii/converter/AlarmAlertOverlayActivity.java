@@ -6,21 +6,18 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.media.AudioAttributes;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Vibrator;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class AlarmAlertOverlayActivity extends AppCompatActivity {
 
@@ -30,8 +27,6 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
     private String alarmLabel;
     private String alarmTime;
     private String alarmSound;
-    private static Ringtone ringtoneInstance = null;
-    private Vibrator vibrator = null;
 
     private FrameLayout sliderTrack;
     private FrameLayout sliderCircle;
@@ -82,8 +77,10 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
 
             initFromIntent(getIntent());
 
-            startAlarmAudioAndVibration();
-            notifyAppAlarmStarted();
+            // Ensure Foreground Service is actively ringing the alarm
+            if (!AlarmService.isRinging()) {
+                AlarmService.startAlarm(this, alarmId, alarmLabel, alarmTime, alarmSound);
+            }
 
             setupSlideToDismiss();
 
@@ -121,11 +118,9 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
 
                     case MotionEvent.ACTION_MOVE:
                         float newX = event.getRawX() + dX;
-                        // Clamp translation between 0 and maxDrag
                         float clampedX = Math.max(0, Math.min(newX, maxDrag));
                         view.setTranslationX(clampedX);
 
-                        // Fade out hint text as user slides
                         if (sliderHint != null && maxDrag > 0) {
                             float progress = clampedX / maxDrag;
                             sliderHint.setAlpha(Math.max(0f, 1f - (progress * 1.5f)));
@@ -136,14 +131,11 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
                     case MotionEvent.ACTION_CANCEL:
                         float currentX = view.getTranslationX();
                         if (maxDrag > 0 && currentX >= maxDrag * 0.65f) {
-                            // Successfully slid to turn off
                             isDismissed = true;
-                            // Complete slide animation to end
                             view.animate().translationX(maxDrag).setDuration(120).withEndAction(() -> {
                                 performDismiss();
                             }).start();
                         } else {
-                            // Snap back to starting position
                             view.animate().translationX(0f).setDuration(220).start();
                             if (sliderHint != null) {
                                 sliderHint.animate().alpha(1.0f).setDuration(220).start();
@@ -157,9 +149,12 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
     }
 
     private void performDismiss() {
-        stopAlarmAudioAndVibration();
+        // Stop foreground service ringing & vibration
+        AlarmService.stopAlarm(this);
         cancelNotification();
-        notifyAppAlarmDismissed();
+
+        // If one-time alarm, disable in preferences
+        disableOneTimeAlarm(alarmId);
 
         try {
             android.os.Vibrator v = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
@@ -194,9 +189,8 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
     }
 
     private void performSnooze(long delayMillis) {
-        stopAlarmAudioAndVibration();
+        AlarmService.stopAlarm(this);
         cancelNotification();
-        notifyAppAlarmDismissed();
         snoozeAlarm(delayMillis);
         finish();
     }
@@ -217,14 +211,6 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         }
     }
 
-    private void notifyAppAlarmStarted() {
-        MainActivity.dispatchJsEvent("native-alarm-started");
-    }
-
-    private void notifyAppAlarmDismissed() {
-        MainActivity.dispatchJsEvent("native-alarm-dismissed");
-    }
-
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -237,8 +223,9 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         if (sliderHint != null) {
             sliderHint.setAlpha(1f);
         }
-        startAlarmAudioAndVibration();
-        notifyAppAlarmStarted();
+        if (!AlarmService.isRinging()) {
+            AlarmService.startAlarm(this, alarmId, alarmLabel, alarmTime, alarmSound);
+        }
     }
 
     private void initFromIntent(Intent intent) {
@@ -266,7 +253,7 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
             tvSound.setText("🔔 " + alarmSound);
         }
 
-        // If this is a timer or pomodoro, hide the 10m alarm snooze button
+        // If this is a timer or pomodoro, hide the 10m snooze button
         if (alarmId != null && (alarmId.contains("timer") || alarmId.contains("pomo"))) {
             if (btnSnooze != null) {
                 btnSnooze.setVisibility(android.view.View.GONE);
@@ -274,52 +261,6 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         } else if (btnSnooze != null) {
             btnSnooze.setVisibility(android.view.View.VISIBLE);
         }
-    }
-
-    private void startAlarmAudioAndVibration() {
-        try {
-            vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-            if (vibrator != null && vibrator.hasVibrator()) {
-                long[] pattern = {0, 600, 300, 600, 300, 600};
-                vibrator.vibrate(pattern, 0); // repeat
-            }
-
-            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (alarmUri == null) {
-                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-            }
-
-            if (alarmUri != null) {
-                if (ringtoneInstance != null && ringtoneInstance.isPlaying()) {
-                    ringtoneInstance.stop();
-                }
-                ringtoneInstance = RingtoneManager.getRingtone(getApplicationContext(), alarmUri);
-                if (ringtoneInstance != null) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        AudioAttributes attributes = new AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ALARM)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build();
-                        ringtoneInstance.setAudioAttributes(attributes);
-                    }
-                    ringtoneInstance.play();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void stopAlarmAudioAndVibration() {
-        try {
-            if (ringtoneInstance != null && ringtoneInstance.isPlaying()) {
-                ringtoneInstance.stop();
-                ringtoneInstance = null;
-            }
-            if (vibrator != null) {
-                vibrator.cancel();
-            }
-        } catch (Exception ignored) {}
     }
 
     @Override
@@ -335,8 +276,8 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         try {
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
+                nm.cancel(AlarmService.NOTIFICATION_ID);
                 if (alarmId != null) nm.cancel(alarmId.hashCode());
-                nm.cancel(888);
             }
         } catch (Exception ignored) {}
     }
@@ -357,10 +298,11 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         PendingIntent pi = PendingIntent.getBroadcast(this, (alarmId + "_snooze").hashCode(), intent, flags);
         long triggerAt = System.currentTimeMillis() + delayMillis;
 
+        Intent showIntent = new Intent(this, MainActivity.class);
+        showIntent.putExtra("route", "clock");
+        PendingIntent showPI = PendingIntent.getActivity(this, (alarmId + "_snooze_show").hashCode(), showIntent, flags);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Intent showIntent = new Intent(this, MainActivity.class);
-            showIntent.putExtra("route", "clock");
-            PendingIntent showPI = PendingIntent.getActivity(this, (alarmId + "_snooze_show").hashCode(), showIntent, flags);
             alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAt, showPI), pi);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
@@ -373,12 +315,39 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         } catch (Exception ignored) {}
     }
 
+    private void disableOneTimeAlarm(String alarmId) {
+        if (alarmId == null) return;
+        try {
+            SharedPreferences prefs = getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);
+            String alarmsJsonStr = prefs.getString(AppWidgetSyncPlugin.KEY_ALARMS, "[]");
+            JSONArray arr = new JSONArray(alarmsJsonStr);
+            boolean modified = false;
+
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject alarm = arr.getJSONObject(i);
+                String id = alarm.optString("id", "");
+                if (id.equals(alarmId)) {
+                    JSONArray daysArr = alarm.optJSONArray("days");
+                    if (daysArr == null || daysArr.length() == 0) {
+                        alarm.put("isEnabled", false);
+                        modified = true;
+                    }
+                    break;
+                }
+            }
+
+            if (modified) {
+                prefs.edit().putString(AppWidgetSyncPlugin.KEY_ALARMS, arr.toString()).apply();
+                MainActivity.dispatchJsEvent("alarms-updated");
+            }
+        } catch (Exception ignored) {}
+    }
+
     @Override
     protected void onDestroy() {
         if (activeOverlayInstance == this) {
             activeOverlayInstance = null;
         }
-        stopAlarmAudioAndVibration();
         super.onDestroy();
     }
 }

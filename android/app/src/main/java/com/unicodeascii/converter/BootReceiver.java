@@ -69,8 +69,8 @@ public class BootReceiver extends BroadcastReceiver {
                     targetCal.set(Calendar.MILLISECOND, 0);
 
                     if (daysList.isEmpty()) {
-                        // If time has passed today, schedule for tomorrow
-                        if (targetCal.getTimeInMillis() <= (now - 5000)) {
+                        // If time has passed today (<= now), schedule for tomorrow
+                        if (targetCal.getTimeInMillis() <= now) {
                             targetCal.add(Calendar.DAY_OF_YEAR, 1);
                         }
                     } else {
@@ -85,7 +85,7 @@ public class BootReceiver extends BroadcastReceiver {
                             checkCal.set(Calendar.MILLISECOND, 0);
 
                             int jsDayOfWeek = checkCal.get(Calendar.DAY_OF_WEEK) - 1;
-                            if (daysList.contains(jsDayOfWeek) && checkCal.getTimeInMillis() > (now - 5000)) {
+                            if (daysList.contains(jsDayOfWeek) && checkCal.getTimeInMillis() > now) {
                                 targetCal = checkCal;
                                 found = true;
                                 break;
@@ -98,7 +98,7 @@ public class BootReceiver extends BroadcastReceiver {
 
                     long triggerAt = targetCal.getTimeInMillis();
 
-                    // 1. Actual Alarm Intent
+                    // 1. Set High-Priority Exact Alarm via AlarmClockInfo
                     Intent alarmIntent = new Intent(context, AlarmReceiver.class);
                     alarmIntent.putExtra("alarmId", id);
                     alarmIntent.putExtra("alarmTime", time);
@@ -122,29 +122,6 @@ public class BootReceiver extends BroadcastReceiver {
                         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
                     } else {
                         alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
-                    }
-
-                    // 2. Schedule 15-Minute Prior Notice
-                    long upcomingNoticeTime = triggerAt - (15 * 60 * 1000); // 15 mins prior
-                    if (upcomingNoticeTime > now) {
-                        Intent upcomingIntent = new Intent(context, AlarmReceiver.class);
-                        upcomingIntent.setAction(AlarmReceiver.ACTION_UPCOMING_ALARM_NOTICE);
-                        upcomingIntent.putExtra("alarmId", id);
-                        upcomingIntent.putExtra("alarmTime", time);
-                        upcomingIntent.putExtra("alarmLabel", label);
-
-                        PendingIntent upcomingPI = PendingIntent.getBroadcast(
-                            context,
-                            (id + "_upcoming").hashCode(),
-                            upcomingIntent,
-                            flags
-                        );
-
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, upcomingNoticeTime, upcomingPI);
-                        } else {
-                            alarmManager.setExact(AlarmManager.RTC_WAKEUP, upcomingNoticeTime, upcomingPI);
-                        }
                     }
                 }
             }

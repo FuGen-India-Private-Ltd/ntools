@@ -9,6 +9,7 @@ export interface DownloadResult {
   success: boolean;
   message: string;
   uri?: string;
+  savedPath?: string;
 }
 
 export type ToastType = 'success' | 'error' | 'info';
@@ -22,6 +23,7 @@ export interface ToastMessage {
 
 // Global Event Dispatcher for Toast Alerts
 export function showToast(title: string, description?: string, type: ToastType = 'success') {
+  if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return;
   const event = new CustomEvent<ToastMessage>('app-toast', {
     detail: {
       id: Math.random().toString(36).substring(2, 9),
@@ -50,11 +52,13 @@ export async function blobToBase64(blob: Blob): Promise<string> {
 
 /**
  * Universal save and download function that works on Web and Android Native.
+ * On Android, stores directly in the public "Documents/nTools/" folder.
  */
 export async function saveAndDownloadFile(
   blob: Blob,
   fileName: string,
-  _mimeType?: string
+  _mimeType?: string,
+  subFolder?: string
 ): Promise<DownloadResult> {
   try {
     if (!blob || blob.size === 0) {
@@ -64,15 +68,43 @@ export async function saveAndDownloadFile(
     const isNative = Capacitor.isNativePlatform();
 
     if (isNative) {
-      // 1. Android / Native Capacitor Scoped Storage & Share Sheet
+      // 1. Android / Native Capacitor Public Scoped Storage in Documents/nTools/
       const base64Data = await blobToBase64(blob);
+      const cleanFileName = fileName.replace(/[\\/:*?"<>|]/g, '_');
+      const folderPrefix = subFolder ? `nTools/${subFolder}` : 'nTools';
+      const targetRelPath = `${folderPrefix}/${cleanFileName}`;
 
-      // Write to Cache directory first
-      const writtenFile = await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: Directory.Cache,
-      });
+      let writtenFile;
+      let displayLocation = `Documents/${targetRelPath}`;
+
+      try {
+        writtenFile = await Filesystem.writeFile({
+          path: targetRelPath,
+          data: base64Data,
+          directory: Directory.Documents,
+          recursive: true,
+        });
+      } catch (docErr) {
+        console.warn('Writing to Documents/nTools failed, trying fallback', docErr);
+        try {
+          // Fallback to Documents root
+          writtenFile = await Filesystem.writeFile({
+            path: cleanFileName,
+            data: base64Data,
+            directory: Directory.Documents,
+            recursive: true,
+          });
+          displayLocation = `Documents/${cleanFileName}`;
+        } catch (fallbackErr) {
+          // Ultimate fallback to Cache
+          writtenFile = await Filesystem.writeFile({
+            path: cleanFileName,
+            data: base64Data,
+            directory: Directory.Cache,
+          });
+          displayLocation = `Internal Storage/${cleanFileName}`;
+        }
+      }
 
       const fileUri = writtenFile.uri;
 
@@ -81,10 +113,10 @@ export async function saveAndDownloadFile(
         const canShare = await Share.canShare();
         if (canShare.value) {
           await Share.share({
-            title: fileName,
-            text: `Exported ${fileName}`,
+            title: cleanFileName,
+            text: `Exported ${cleanFileName} to ${displayLocation}`,
             url: fileUri,
-            dialogTitle: `Save or Open ${fileName}`,
+            dialogTitle: `Save or Open ${cleanFileName}`,
           });
         }
       } catch (shareErr) {
@@ -92,31 +124,34 @@ export async function saveAndDownloadFile(
       }
 
       showToast(
-        'File Ready',
-        `"${fileName}" (${Math.round(blob.size / 1024)} KB) saved to device.`,
+        'Saved to Phone',
+        `Saved to ${displayLocation} (${Math.round(blob.size / 1024)} KB). Open in My Files / Documents.`,
         'success'
       );
 
       return {
         success: true,
-        message: `Saved "${fileName}" successfully`,
+        message: `Saved "${cleanFileName}" successfully to ${displayLocation}`,
         uri: fileUri,
+        savedPath: displayLocation,
       };
     } else {
       // 2. Web Browser Fallback with Anchor Tag
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = fileName;
-      link.style.display = 'none';
+      if (typeof document !== 'undefined' && typeof URL !== 'undefined') {
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = fileName;
+        link.style.display = 'none';
 
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-      setTimeout(() => {
-        URL.revokeObjectURL(objectUrl);
-      }, 5000);
+        setTimeout(() => {
+          URL.revokeObjectURL(objectUrl);
+        }, 5000);
+      }
 
       showToast(
         'Download Started',
@@ -127,6 +162,7 @@ export async function saveAndDownloadFile(
       return {
         success: true,
         message: `Downloaded "${fileName}"`,
+        savedPath: `Downloads/${fileName}`,
       };
     }
   } catch (err: any) {

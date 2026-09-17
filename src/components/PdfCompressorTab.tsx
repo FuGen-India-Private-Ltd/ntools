@@ -21,9 +21,14 @@ import {
   Zap,
   Target,
   Share2,
+  FileEdit,
 } from 'lucide-react';
 
-export function PdfCompressorTab() {
+export interface PdfCompressorTabProps {
+  onEditInEditor?: (blob: Blob, fileName: string) => void;
+}
+
+export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {}) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [compressionLevel, setCompressionLevel] = useState<PdfCompressionLevel>('medium');
   const [selectedTargetPreset, setSelectedTargetPreset] = useState<number | null>(null);
@@ -277,20 +282,39 @@ export function PdfCompressorTab() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              saveAndDownloadFile(
-                result.compressedBlob,
-                `compressed_${result.originalFileName}`,
-                'application/pdf'
-              )
-            }
-            className="liquid-glass-accent w-full py-2.5 px-4 rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-          >
-            <Download className="w-4 h-4" />
-            <span>Download Compressed PDF</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                saveAndDownloadFile(
+                  result.compressedBlob,
+                  `compressed_${result.originalFileName}`,
+                  'application/pdf'
+                )
+              }
+              className="liquid-glass-accent flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Compressed PDF</span>
+            </button>
+
+            {onEditInEditor && (
+              <button
+                type="button"
+                onClick={() =>
+                  onEditInEditor(
+                    result.compressedBlob,
+                    `compressed_${result.originalFileName}`
+                  )
+                }
+                className="liquid-glass-btn py-2.5 px-4 rounded-2xl text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                title="Edit in PDF Editor"
+              >
+                <FileEdit className="w-4 h-4 text-indigo-500" />
+                <span>Edit PDF</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

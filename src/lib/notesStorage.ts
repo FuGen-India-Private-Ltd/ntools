@@ -2,7 +2,14 @@
 // Supports Markdown, Category Color Tags, Pinning, Search, and PDF/MD Export
 
 import { jsPDF } from 'jspdf';
-import { downloadBlob } from './docxProcessor';
+import { saveAndDownloadFile } from './fileDownloader';
+
+export interface NotePdfExportOptions {
+  customTitle?: string;
+  author?: string;
+  themeColor?: string;
+  fontSize?: number;
+}
 
 export interface NoteItem {
   id: string;
@@ -153,7 +160,7 @@ export function searchAndFilterNotes(
     });
 }
 
-export function exportNoteAsPdf(note: NoteItem) {
+export function exportNoteAsPdf(note: NoteItem, options: NotePdfExportOptions = {}) {
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -165,20 +172,21 @@ export function exportNoteAsPdf(note: NoteItem) {
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
 
-  // Header Bar
+  // Header Accent Bar
   pdf.setFillColor(245, 158, 11);
   pdf.rect(0, 0, pageWidth, 4, 'F');
 
-  // Title
+  // Document Title
+  const effectiveTitle = options.customTitle || note.title || 'Untitled Note';
   pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(20);
+  pdf.setFontSize(options.fontSize ? options.fontSize + 6 : 20);
   pdf.setTextColor(15, 23, 42);
-  const titleLines = pdf.splitTextToSize(note.title || 'Untitled Note', contentWidth);
+  const titleLines = pdf.splitTextToSize(effectiveTitle, contentWidth);
   pdf.text(titleLines, margin, 24);
 
   let currentY = 24 + titleLines.length * 8 + 4;
 
-  // Category & Timestamp
+  // Metadata: Category, Author, Timestamp
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9);
   pdf.setTextColor(148, 163, 184);
@@ -190,15 +198,17 @@ export function exportNoteAsPdf(note: NoteItem) {
     hour: '2-digit',
     minute: '2-digit',
   });
-  pdf.text(`${catLabel.toUpperCase()} • Last modified: ${dateStr}`, margin, currentY);
+  const authorStr = options.author ? ` • Author: ${options.author}` : '';
+  pdf.text(`${catLabel.toUpperCase()}${authorStr} • Modified: ${dateStr}`, margin, currentY);
 
   pdf.setDrawColor(226, 232, 240);
   pdf.line(margin, currentY + 3, pageWidth - margin, currentY + 3);
   currentY += 12;
 
-  // Content lines
+  // Body content lines
+  const bodyFontSize = options.fontSize || 11;
   pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(11);
+  pdf.setFontSize(bodyFontSize);
   pdf.setTextColor(51, 65, 85);
 
   const cleanContent = note.content
@@ -217,17 +227,22 @@ export function exportNoteAsPdf(note: NoteItem) {
       currentY = 20;
     }
     pdf.text(line, margin, currentY);
-    currentY += 6;
+    currentY += bodyFontSize * 0.55;
   });
 
   const blob = pdf.output('blob');
-  const safeName = (note.title || 'Note').replace(/[^a-zA-Z0-9_\u0C80-\u0CFF]/g, '_');
-  downloadBlob(blob, `${safeName}.pdf`);
+  const safeName = effectiveTitle.replace(/[^a-zA-Z0-9_\u0C80-\u0CFF]/g, '_');
+  const fileName = `${safeName}.pdf`;
+
+  saveAndDownloadFile(blob, fileName, 'application/pdf');
+  return { blob, fileName };
 }
 
 export function exportNoteAsMarkdown(note: NoteItem) {
   const mdContent = `# ${note.title}\n\n*Category: ${NOTE_CATEGORIES[note.category]?.label}*\n*Updated: ${new Date(note.updatedAt).toLocaleString()}*\n\n---\n\n${note.content}\n`;
   const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
   const safeName = (note.title || 'Note').replace(/[^a-zA-Z0-9_\u0C80-\u0CFF]/g, '_');
-  downloadBlob(blob, `${safeName}.md`);
+  const fileName = `${safeName}.md`;
+  saveAndDownloadFile(blob, fileName, 'text/markdown');
+  return { blob, fileName };
 }

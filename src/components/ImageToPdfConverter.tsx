@@ -20,9 +20,14 @@ import {
   RotateCcw,
   Sliders,
   Plus,
+  FileEdit,
 } from 'lucide-react';
 
-export function ImageToPdfConverter() {
+export interface ImageToPdfConverterProps {
+  onEditInEditor?: (blob: Blob, fileName: string) => void;
+}
+
+export function ImageToPdfConverter({ onEditInEditor }: ImageToPdfConverterProps = {}) {
   const [items, setItems] = useState<ImageToPdfItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -297,7 +302,7 @@ export function ImageToPdfConverter() {
               <span>PDF Generated Successfully ({items.length} pages, {formatFileSize(pdfBlob.size)})!</span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => downloadImagesPdf(pdfBlob, 'Photos_Combined')}
@@ -306,6 +311,18 @@ export function ImageToPdfConverter() {
                 <Download className="w-4 h-4" />
                 <span>Download PDF</span>
               </button>
+
+              {onEditInEditor && (
+                <button
+                  type="button"
+                  onClick={() => onEditInEditor(pdfBlob, 'Photos_Combined.pdf')}
+                  className="liquid-glass-btn py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+                  title="Open in PDF Editor"
+                >
+                  <FileEdit className="w-4 h-4 text-indigo-500" />
+                  <span>Edit PDF</span>
+                </button>
+              )}
 
               <button
                 type="button"

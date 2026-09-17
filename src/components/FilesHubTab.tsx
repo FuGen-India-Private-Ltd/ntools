@@ -6,6 +6,7 @@ import { DocxPptToPdfConverter } from './DocxPptToPdfConverter';
 import { ExcelToPdfConverter } from './ExcelToPdfConverter';
 import { ImageToPdfConverter } from './ImageToPdfConverter';
 import { ImageCompressorTab } from './ImageCompressorTab';
+import { PdfEditorTab } from './PdfEditorTab';
 import {
   Layers,
   Minimize2,
@@ -14,6 +15,7 @@ import {
   FileSpreadsheet,
   Images,
   Image as ImageIcon,
+  FileEdit,
   Sparkles,
 } from 'lucide-react';
 
@@ -21,6 +23,7 @@ export type FileToolType =
   | 'pdf-merge'
   | 'pdf-compress'
   | 'pdf-split'
+  | 'pdf-edit'
   | 'pdf-convert'
   | 'excel-convert'
   | 'image-to-pdf'
@@ -61,6 +64,14 @@ const TOOLS: ToolDef[] = [
     activeClass: 'liquid-glass-accent shadow-sm',
   },
   {
+    id: 'pdf-edit',
+    label: 'Edit & Annotate PDF',
+    icon: FileEdit,
+    category: 'core',
+    colorClass: 'text-indigo-600 dark:text-indigo-400',
+    activeClass: 'liquid-glass-accent shadow-sm',
+  },
+  {
     id: 'pdf-convert',
     label: 'Doc & PPT to PDF',
     icon: FileText,
@@ -96,6 +107,12 @@ const TOOLS: ToolDef[] = [
 
 export const FilesHubTab = React.memo(function FilesHubTab() {
   const [activeSubTab, setActiveSubTab] = useState<FileToolType>('pdf-merge');
+  const [editingPdf, setEditingPdf] = useState<{ blob: Blob; fileName: string } | null>(null);
+
+  const handleEditInEditor = (blob: Blob, fileName: string) => {
+    setEditingPdf({ blob, fileName });
+    setActiveSubTab('pdf-edit');
+  };
 
   return (
     <div className="space-y-5 pb-24 max-w-6xl mx-auto">
@@ -126,14 +143,22 @@ export const FilesHubTab = React.memo(function FilesHubTab() {
 
       {/* Active Sub-Tab Tool View */}
       <div key={activeSubTab} className="animate-in fade-in duration-150">
-        {activeSubTab === 'pdf-merge' && <PdfMergerTab />}
-        {activeSubTab === 'pdf-compress' && <PdfCompressorTab />}
-        {activeSubTab === 'pdf-split' && <PdfSplitterTab />}
-        {activeSubTab === 'pdf-convert' && <DocxPptToPdfConverter />}
-        {activeSubTab === 'excel-convert' && <ExcelToPdfConverter />}
-        {activeSubTab === 'image-to-pdf' && <ImageToPdfConverter />}
+        {activeSubTab === 'pdf-merge' && <PdfMergerTab onEditInEditor={handleEditInEditor} />}
+        {activeSubTab === 'pdf-compress' && <PdfCompressorTab onEditInEditor={handleEditInEditor} />}
+        {activeSubTab === 'pdf-split' && <PdfSplitterTab onEditInEditor={handleEditInEditor} />}
+        {activeSubTab === 'pdf-edit' && (
+          <PdfEditorTab
+            initialBlob={editingPdf?.blob}
+            initialFileName={editingPdf?.fileName}
+            onClearInitial={() => setEditingPdf(null)}
+          />
+        )}
+        {activeSubTab === 'pdf-convert' && <DocxPptToPdfConverter onEditInEditor={handleEditInEditor} />}
+        {activeSubTab === 'excel-convert' && <ExcelToPdfConverter onEditInEditor={handleEditInEditor} />}
+        {activeSubTab === 'image-to-pdf' && <ImageToPdfConverter onEditInEditor={handleEditInEditor} />}
         {activeSubTab === 'image-compress' && <ImageCompressorTab />}
       </div>
     </div>
   );
 });
+

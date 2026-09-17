@@ -16,9 +16,14 @@ import {
   RotateCcw,
   Sparkles,
   ShieldCheck,
+  FileEdit,
 } from 'lucide-react';
 
-export function DocxPptToPdfConverter() {
+export interface DocxPptToPdfConverterProps {
+  onEditInEditor?: (blob: Blob, fileName: string) => void;
+}
+
+export function DocxPptToPdfConverter({ onEditInEditor }: DocxPptToPdfConverterProps = {}) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileType, setFileType] = useState<'docx' | 'pptx' | null>(null);
   const [status, setStatus] = useState<'upload' | 'configured' | 'converting' | 'completed'>('upload');
@@ -422,21 +427,33 @@ export function DocxPptToPdfConverter() {
                 </div>
               </div>
 
-              {/* Download CTA Button */}
+              {/* Download & Edit CTA Buttons */}
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => saveAndDownloadFile(activeResult.pdfBlob, activeResult.pdfFileName)}
-                  className="liquid-glass-accent flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-xs font-bold shadow-lg transition active:scale-95"
+                  className="liquid-glass-accent flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-xs font-bold shadow-lg transition active:scale-95 cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download PDF</span>
                 </button>
 
+                {onEditInEditor && (
+                  <button
+                    type="button"
+                    onClick={() => onEditInEditor(activeResult.pdfBlob, activeResult.pdfFileName)}
+                    className="liquid-glass-btn inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl text-indigo-600 dark:text-indigo-400 text-xs font-bold transition active:scale-95 cursor-pointer"
+                    title="Open in PDF Editor"
+                  >
+                    <FileEdit className="w-4 h-4 text-indigo-500" />
+                    <span>Edit PDF</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="liquid-glass-btn inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl text-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95"
+                  className="liquid-glass-btn inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl text-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95 cursor-pointer"
                   title="Convert Another File"
                 >
                   <RotateCcw className="w-4 h-4" />

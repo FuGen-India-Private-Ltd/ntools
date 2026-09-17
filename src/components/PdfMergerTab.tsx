@@ -19,9 +19,14 @@ import {
   Sparkles,
   AlertCircle,
   FileText,
+  FileEdit,
 } from 'lucide-react';
 
-export function PdfMergerTab() {
+export interface PdfMergerTabProps {
+  onEditInEditor?: (blob: Blob, fileName: string) => void;
+}
+
+export function PdfMergerTab({ onEditInEditor }: PdfMergerTabProps = {}) {
   const [items, setItems] = useState<PdfMergeInputItem[]>([]);
   const [isMerging, setIsMerging] = useState(false);
   const [mergedResult, setMergedResult] = useState<PdfMergeResult | null>(null);
@@ -338,6 +343,18 @@ export function PdfMergerTab() {
               <Download className="w-4 h-4" />
               <span>Download Merged PDF</span>
             </button>
+
+            {onEditInEditor && (
+              <button
+                type="button"
+                onClick={() => onEditInEditor(mergedResult.mergedBlob, mergedResult.fileName)}
+                className="liquid-glass-btn py-2.5 px-4 rounded-2xl text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                title="Edit in PDF Editor"
+              >
+                <FileEdit className="w-4 h-4 text-indigo-500" />
+                <span>Edit PDF</span>
+              </button>
+            )}
           </div>
         </div>
       )}

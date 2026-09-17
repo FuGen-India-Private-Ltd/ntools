@@ -385,6 +385,10 @@ public class AppWidgetSyncPlugin extends Plugin {
     @PluginMethod
     public void dismissAlarm(PluginCall call) {
         try {
+            Context ctx = getContext();
+            if (ctx != null) {
+                AlarmService.stopAlarm(ctx);
+            }
             AlarmAlertOverlayActivity.dismissActiveOverlay();
         } catch (Exception ignored) {}
         JSObject ret = new JSObject();
@@ -396,6 +400,10 @@ public class AppWidgetSyncPlugin extends Plugin {
     public void snoozeAlarm(PluginCall call) {
         try {
             int minutes = call.getInt("minutes", 10);
+            Context ctx = getContext();
+            if (ctx != null) {
+                AlarmService.stopAlarm(ctx);
+            }
             AlarmAlertOverlayActivity.snoozeActiveOverlay((long) minutes * 60 * 1000);
         } catch (Exception ignored) {}
         JSObject ret = new JSObject();

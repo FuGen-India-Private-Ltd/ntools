@@ -86,6 +86,44 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
             }
+
+            // Prompt exact alarm permission on Android 12+ if not granted
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                android.app.AlarmManager am = (android.app.AlarmManager) getSystemService(android.content.Context.ALARM_SERVICE);
+                if (am != null && !am.canScheduleExactAlarms()) {
+                    android.content.SharedPreferences prefs = getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+                    boolean hasAskedExact = prefs.getBoolean("has_prompted_exact_alarm", false);
+                    if (!hasAskedExact) {
+                        prefs.edit().putBoolean("has_prompted_exact_alarm", true).apply();
+                        try {
+                            Intent aIntent = new Intent(
+                                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                android.net.Uri.parse("package:" + getPackageName())
+                            );
+                            startActivity(aIntent);
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+
+            // Prompt full-screen intent permission on Android 14+ if not granted
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+                if (nm != null && !nm.canUseFullScreenIntent()) {
+                    android.content.SharedPreferences prefs = getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+                    boolean hasAskedFsi = prefs.getBoolean("has_prompted_full_screen_intent", false);
+                    if (!hasAskedFsi) {
+                        prefs.edit().putBoolean("has_prompted_full_screen_intent", true).apply();
+                        try {
+                            Intent fsiIntent = new Intent(
+                                android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                                android.net.Uri.parse("package:" + getPackageName())
+                            );
+                            startActivity(fsiIntent);
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
         } catch (Exception ignored) {}
     }
 
