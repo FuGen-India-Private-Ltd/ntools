@@ -57,9 +57,10 @@ export function ExcelToPdfConverter({ onEditInEditor }: ExcelToPdfConverterProps
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Layout Settings
-  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait' | 'auto'>('auto');
   const [pageSize, setPageSize] = useState<'a4' | 'letter'>('a4');
   const [includeGridLines, setIncludeGridLines] = useState(true);
+  const [theme, setTheme] = useState<'modern-slate' | 'professional-blue' | 'minimal'>('modern-slate');
 
   // Bulk actions
   const [isMergingAll, setIsMergingAll] = useState(false);
@@ -177,6 +178,7 @@ export function ExcelToPdfConverter({ onEditInEditor }: ExcelToPdfConverterProps
           orientation,
           pageSize,
           includeGridLines,
+          theme,
           selectedSheetIndex:
             item.selectedSheetIdx !== undefined && item.selectedSheetIdx >= 0
               ? item.selectedSheetIdx
@@ -523,17 +525,18 @@ export function ExcelToPdfConverter({ onEditInEditor }: ExcelToPdfConverterProps
                 Batch PDF Table Layout
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 <div>
                   <label className="block text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
                     Orientation
                   </label>
                   <select
                     value={orientation}
-                    onChange={(e) => setOrientation(e.target.value as 'landscape' | 'portrait')}
+                    onChange={(e) => setOrientation(e.target.value as 'landscape' | 'portrait' | 'auto')}
                     className="w-full px-3 py-2 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 font-medium outline-none border border-black/10 dark:border-white/10"
                   >
-                    <option value="landscape">Landscape (Best for Wide Tables)</option>
+                    <option value="auto">Auto-Detect</option>
+                    <option value="landscape">Landscape (Wide Tables)</option>
                     <option value="portrait">Portrait</option>
                   </select>
                 </div>
@@ -549,6 +552,21 @@ export function ExcelToPdfConverter({ onEditInEditor }: ExcelToPdfConverterProps
                   >
                     <option value="a4">A4 (Standard)</option>
                     <option value="letter">US Letter</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
+                    Table Theme
+                  </label>
+                  <select
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value as 'modern-slate' | 'professional-blue' | 'minimal')}
+                    className="w-full px-3 py-2 rounded-xl liquid-glass-input text-slate-800 dark:text-slate-200 font-medium outline-none border border-black/10 dark:border-white/10"
+                  >
+                    <option value="modern-slate">Modern Slate (Bold)</option>
+                    <option value="professional-blue">Corporate Blue</option>
+                    <option value="minimal">Minimalist Gray</option>
                   </select>
                 </div>
 

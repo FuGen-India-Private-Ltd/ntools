@@ -40,6 +40,8 @@ interface QueuedFileItem {
   resultBlob?: Blob;
   resultFileName?: string;
   pageCount?: number;
+  tableCount?: number;
+  imageCount?: number;
 }
 
 export function DocxPptToPdfConverter({ onEditInEditor }: DocxPptToPdfConverterProps = {}) {
@@ -177,27 +179,46 @@ export function DocxPptToPdfConverter({ onEditInEditor }: DocxPptToPdfConverterP
           resultBlob = res.pdfBlob;
           resultFileName = res.pdfFileName;
           pageCount = res.paragraphs ? Math.max(1, Math.ceil(res.paragraphs.length / 5)) : 1;
+          const tableCount = res.tableCount;
+          const imageCount = res.imageCount;
+
+          setQueue((prev) =>
+            prev.map((item, idx) =>
+              idx === i
+                ? {
+                    ...item,
+                    status: 'done',
+                    progressPercent: 100,
+                    resultBlob,
+                    resultFileName,
+                    pageCount,
+                    tableCount,
+                    imageCount,
+                  }
+                : item
+            )
+          );
         } else {
           const res: PptxProcessResult = await processPptxFile(currentItem.file);
           resultBlob = res.pdfBlob;
           resultFileName = res.pdfFileName;
           pageCount = res.slides ? res.slides.length : 1;
-        }
 
-        setQueue((prev) =>
-          prev.map((item, idx) =>
-            idx === i
-              ? {
-                  ...item,
-                  status: 'done',
-                  progressPercent: 100,
-                  resultBlob,
-                  resultFileName,
-                  pageCount,
-                }
-              : item
-          )
-        );
+          setQueue((prev) =>
+            prev.map((item, idx) =>
+              idx === i
+                ? {
+                    ...item,
+                    status: 'done',
+                    progressPercent: 100,
+                    resultBlob,
+                    resultFileName,
+                    pageCount,
+                  }
+                : item
+            )
+          );
+        }
       } catch (err: any) {
         console.error(`Error converting ${currentItem.name}:`, err);
         setQueue((prev) =>
@@ -460,6 +481,8 @@ export function DocxPptToPdfConverter({ onEditInEditor }: DocxPptToPdfConverterP
                       </p>
                       <p className="text-[11px] text-slate-400 font-mono">
                         {formatSize(item.sizeBytes)} {item.pageCount ? `• ~${item.pageCount} pgs` : ''}
+                        {item.tableCount ? ` • ${item.tableCount} ${item.tableCount === 1 ? 'tbl' : 'tbls'}` : ''}
+                        {item.imageCount ? ` • ${item.imageCount} ${item.imageCount === 1 ? 'img' : 'imgs'}` : ''}
                       </p>
                     </div>
                   </div>

@@ -42,6 +42,7 @@ interface QueuedPdfCompressItem {
   compressedBlob?: Blob;
   error?: string;
   pageCount?: number;
+  imagesOptimized?: number;
 }
 
 export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {}) {
@@ -135,6 +136,7 @@ export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {})
                   reductionPercentage: res.reductionPercentage,
                   compressedBlob: res.compressedBlob,
                   pageCount: res.pageCount,
+                  imagesOptimized: res.imagesOptimized,
                 }
               : it
           )
@@ -327,6 +329,11 @@ export function PdfCompressorTab({ onEditInEditor }: PdfCompressorTabProps = {})
                         {item.compressedSize ? (
                           <span className="text-emerald-500 font-bold ml-1.5">
                             → {formatFileSize(item.compressedSize)} (-{item.reductionPercentage}%)
+                          </span>
+                        ) : null}
+                        {item.imagesOptimized !== undefined && item.imagesOptimized > 0 ? (
+                          <span className="text-indigo-400 font-medium ml-1.5">
+                            • {item.imagesOptimized} img{item.imagesOptimized > 1 ? 's' : ''} optimized
                           </span>
                         ) : null}
                       </p>

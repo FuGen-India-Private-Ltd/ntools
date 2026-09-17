@@ -1,7 +1,7 @@
 // Client-Side Offline PDF Compressor Engine
-// Optimizes PDF Streams, Objects, and Re-Encodes Embedded Raster Assets
+// Traverses PDFRawStream XObjects, downsamples & re-encodes embedded images via Canvas, packs object streams, and removes redundancy
 
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFRawStream, PDFName, PDFNumber } from 'pdf-lib';
 
 export type PdfCompressionLevel = 'low' | 'medium' | 'high';
 
@@ -19,6 +19,7 @@ export interface PdfCompressionResult {
   reductionPercentage: number;
   level: PdfCompressionLevel;
   pageCount: number;
+  imagesOptimized?: number;
 }
 
 export const PDF_COMPRESSION_LEVELS: Record<
@@ -32,19 +33,19 @@ export const PDF_COMPRESSION_LEVELS: Record<
 > = {
   low: {
     name: 'Low Compression (High Quality)',
-    description: 'Optimizes streams and structural objects without degrading graphics. Best for text, forms, and official documents.',
+    description: 'Light image optimization and object stream packing. Best for text, official forms, and contracts.',
     badgeColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-    estimatedSavings: '15% – 35% reduction',
+    estimatedSavings: '20% – 40% reduction',
   },
   medium: {
     name: 'Medium Compression (Balanced)',
-    description: 'Balanced stream compression and object optimization. Recommended for general documents, presentations, and email attachments.',
+    description: 'Balanced canvas resampling and JPEG stream re-encoding. Recommended for general documents, scanned papers, and email attachments.',
     badgeColor: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30',
     estimatedSavings: '40% – 65% reduction',
   },
   high: {
     name: 'High Compression (Maximum Savings)',
-    description: 'Aggressive object stream minification. Best for large PDF files that need to fit under strict upload size limits.',
+    description: 'Aggressive image downsampling and stream compression. Best for large PDF files that must fit strict portal limits.',
     badgeColor: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/30',
     estimatedSavings: '60% – 85% reduction',
   },
@@ -58,7 +59,97 @@ export const COMMON_TARGET_PRESETS = [
 ];
 
 /**
- * Compresses a PDF file 100% client-side with robust error handling and multi-strategy fallbacks.
+ * Re-encodes and downsamples raw image bytes via HTML5 Canvas
+ */
+async function recompressImageBytes(
+  imageBytes: Uint8Array,
+  quality: number,
+  maxDimension: number
+): Promise<{ compressedBytes: Uint8Array; width: number; height: number } | null> {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return null;
+  }
+
+  // Check format: JPEG magic bytes: 0xFF, 0xD8, 0xFF
+  const isJpeg = imageBytes[0] === 0xff && imageBytes[1] === 0xd8 && imageBytes[2] === 0xff;
+  // PNG magic bytes: 0x89, 0x50, 0x4E, 0x47
+  const isPng =
+    imageBytes[0] === 0x89 &&
+    imageBytes[1] === 0x50 &&
+    imageBytes[2] === 0x4e &&
+    imageBytes[3] === 0x47;
+
+  if (!isJpeg && !isPng) {
+    return null;
+  }
+
+  const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
+  const blob = new Blob([imageBytes as any], { type: mimeType });
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = (e) => reject(e);
+      el.src = objectUrl;
+    });
+
+    let width = img.naturalWidth || img.width;
+    let height = img.naturalHeight || img.height;
+
+    if (width === 0 || height === 0) {
+      return null;
+    }
+
+    // Downscale if larger than maxDimension
+    if (width > maxDimension || height > maxDimension) {
+      if (width > height) {
+        height = Math.round((height * maxDimension) / width);
+        width = maxDimension;
+      } else {
+        width = Math.round((width * maxDimension) / height);
+        height = maxDimension;
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    // Fill white background for clean JPEG without dark artifacts
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const compressedBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', quality);
+    });
+
+    if (!compressedBlob) return null;
+
+    const arrayBuffer = await compressedBlob.arrayBuffer();
+    const compressedBytes = new Uint8Array(arrayBuffer);
+
+    // Only return if it actually saves space
+    if (compressedBytes.length < imageBytes.length * 0.95) {
+      return { compressedBytes, width, height };
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+/**
+ * Compresses a PDF file 100% client-side:
+ * - Traverses embedded XObject images and re-encodes them via Canvas
+ * - Preserves all vector text, fonts, tables, and document layout
+ * - Packs object streams and strips unreferenced metadata
  */
 export async function compressPdfFile(
   file: File,
@@ -69,13 +160,7 @@ export async function compressPdfFile(
   }
 
   const originalSize = file.size;
-  let arrayBuffer: ArrayBuffer;
-  try {
-    arrayBuffer = await file.arrayBuffer();
-  } catch (err: any) {
-    throw new Error('Unable to read the PDF file from storage.');
-  }
-
+  const arrayBuffer = await file.arrayBuffer();
   const uint8 = new Uint8Array(arrayBuffer);
 
   // 1. Load the original PDF with safe parsing parameters
@@ -87,12 +172,11 @@ export async function compressPdfFile(
       throwOnInvalidObject: false,
     });
   } catch (loadErr: any) {
-    console.warn('Primary PDF load failed, attempting fallback parse:', loadErr);
     try {
       pdfDoc = await PDFDocument.load(uint8, {
         ignoreEncryption: true,
       });
-    } catch (fallbackErr: any) {
+    } catch {
       throw new Error(
         'Unable to open PDF: The file may be password-protected or have an unsupported encryption format.'
       );
@@ -104,46 +188,107 @@ export async function compressPdfFile(
     throw new Error('The selected PDF contains no pages.');
   }
 
-  // 2. Perform safe object optimization based on selected level
-  let compressedBytes: Uint8Array | null = null;
+  // 2. Set Compression Parameters
+  let quality = 0.70;
+  let maxDimension = 1400;
 
-  // Safe metadata optimization without adding watermarks
+  if (options.level === 'low') {
+    quality = 0.85;
+    maxDimension = 2048;
+  } else if (options.level === 'high') {
+    quality = 0.50;
+    maxDimension = 1024;
+  }
+
+  // Adaptive Target Size limits
+  if (options.targetSizeKb) {
+    const targetBytes = options.targetSizeKb * 1024;
+    if (originalSize > targetBytes) {
+      const ratio = targetBytes / originalSize;
+      if (ratio < 0.25) {
+        quality = 0.38;
+        maxDimension = 800;
+      } else if (ratio < 0.5) {
+        quality = 0.50;
+        maxDimension = 1100;
+      } else if (ratio < 0.75) {
+        quality = 0.65;
+        maxDimension = 1300;
+      }
+    }
+  }
+
+  let imagesOptimized = 0;
+
+  // 3. Enumerate and Compress Embedded Image XObjects
+  try {
+    const indirectObjects = pdfDoc.context.enumerateIndirectObjects();
+
+    for (const [, obj] of indirectObjects) {
+      if (!(obj instanceof PDFRawStream)) continue;
+
+      const dict = obj.dict;
+      const subtype = dict.get(PDFName.of('Subtype'));
+      if (subtype?.toString() !== '/Image') continue;
+
+      const rawBytes = obj.contents;
+      if (!rawBytes || rawBytes.length < 20000) {
+        // Skip tiny icons or stamps under 20KB
+        continue;
+      }
+
+      const recompressed = await recompressImageBytes(rawBytes, quality, maxDimension);
+      if (recompressed) {
+        const { compressedBytes, width, height } = recompressed;
+
+        // Replace raw stream in-place
+        (obj as any).contents = compressedBytes;
+
+        dict.set(PDFName.of('Filter'), PDFName.of('DCTDecode'));
+        dict.set(PDFName.of('Length'), PDFNumber.of(compressedBytes.length));
+        dict.set(PDFName.of('Width'), PDFNumber.of(width));
+        dict.set(PDFName.of('Height'), PDFNumber.of(height));
+        dict.set(PDFName.of('ColorSpace'), PDFName.of('DeviceRGB'));
+        dict.set(PDFName.of('BitsPerComponent'), PDFNumber.of(8));
+        dict.delete(PDFName.of('DecodeParms'));
+
+        imagesOptimized++;
+      }
+    }
+  } catch (err) {
+    console.warn('XObject image compression step encountered an issue, proceeding with stream optimization:', err);
+  }
+
+  // 4. Clean unneeded metadata
   try {
     if (options.level === 'high' || (options.targetSizeKb && originalSize > options.targetSizeKb * 1024)) {
       pdfDoc.setTitle('');
       pdfDoc.setAuthor('');
       pdfDoc.setSubject('');
       pdfDoc.setKeywords([]);
+      pdfDoc.setProducer('nTools High-Fidelity Engine');
     }
   } catch {
-    // Ignore metadata cleanup errors on locked dictionaries
+    // Ignore metadata write error
   }
 
-  // Strategy A: Object Stream Packing
+  // 5. Pack object streams
+  let compressedBytes: Uint8Array;
   try {
     compressedBytes = await pdfDoc.save({
       useObjectStreams: true,
+      addDefaultPage: false,
     });
-  } catch (objStreamErr) {
-    console.warn('Object stream optimization failed, falling back to safe save:', objStreamErr);
-    compressedBytes = null;
+  } catch {
+    compressedBytes = await pdfDoc.save({
+      useObjectStreams: false,
+    });
   }
 
-  // Strategy B: Standard Clean Save (Fallback)
-  if (!compressedBytes) {
-    try {
-      compressedBytes = await pdfDoc.save({
-        useObjectStreams: false,
-      });
-    } catch (safeErr: any) {
-      compressedBytes = uint8;
-    }
-  }
-
-  let finalBlob = new Blob([compressedBytes as any], { type: 'application/pdf' });
+  let finalBlob = new Blob([compressedBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
   let compressedSize = finalBlob.size;
 
-  // If compression resulted in larger file (e.g. heavily pre-compressed), use original file safely
+  // If compression resulted in a larger file (rare, heavily pre-compressed), safely use original
   if (compressedSize >= originalSize) {
     finalBlob = file;
     compressedSize = originalSize;
@@ -161,5 +306,6 @@ export async function compressPdfFile(
     reductionPercentage,
     level: options.level,
     pageCount,
+    imagesOptimized,
   };
 }
