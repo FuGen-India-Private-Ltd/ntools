@@ -190,15 +190,60 @@ export function VoiceRecorderTab() {
     }
   };
 
+  // Idle studio oscilloscope graph renderer
+  const startIdleVisualizer = () => {
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+    }
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerY = height / 2;
+    ctx.clearRect(0, 0, width, height);
+
+    // Center reference line
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.fillRect(0, centerY - 0.5 * dpr, width, 1 * dpr);
+
+    // Resting studio sound-level baseline markers across the deck
+    const numBars = 44;
+    const barWidth = Math.max(3, width / numBars - 3 * dpr);
+    for (let i = 0; i < numBars; i++) {
+      const x = i * (barWidth + 3 * dpr);
+      const halfHeight = (2 + Math.sin(i * 0.45) * 1.5) * dpr;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(x, centerY - halfHeight, barWidth, halfHeight * 2, [barWidth / 2]);
+        ctx.fill();
+      } else {
+        ctx.fillRect(x, centerY - halfHeight, barWidth, halfHeight * 2);
+      }
+    }
+  };
+
   // High-DPI Live Visualizer Loop for active recording
   const startVisualizer = () => {
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     if (!canvasRef.current || !analyserRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const analyser = analyserRef.current;
-    analyser.fftSize = 128; // 64 frequency bins
+    if (!ctx) return;
+
+    analyser.fftSize = 256;
     const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
+    const freqArray = new Uint8Array(bufferLength);
+    const timeArray = new Uint8Array(analyser.fftSize);
 
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
@@ -209,17 +254,18 @@ export function VoiceRecorderTab() {
 
     const render = () => {
       animationFrameRef.current = requestAnimationFrame(render);
-      analyser.getByteFrequencyData(dataArray);
+      analyser.getByteFrequencyData(freqArray);
+      analyser.getByteTimeDomainData(timeArray);
 
-      if (!ctx) return;
       const width = canvas.width;
       const height = canvas.height;
+      const centerY = height / 2;
       ctx.clearRect(0, 0, width, height);
 
       // Compute RMS decibel level
       let sum = 0;
       for (let i = 0; i < bufferLength; i++) {
-        const normalized = dataArray[i] / 255;
+        const normalized = freqArray[i] / 255;
         sum += normalized * normalized;
       }
       const rms = Math.sqrt(sum / bufferLength);
@@ -231,25 +277,24 @@ export function VoiceRecorderTab() {
         livePeaksRef.current.push(Math.max(0.12, Math.min(1.0, Number((rms * 1.8).toFixed(2)))));
       }
 
-      // Render sleek centered dynamic spectrum bars with pill caps
-      const numBars = 44;
-      const barWidth = Math.max(3, (width / numBars) - 3 * dpr);
-      const centerY = height / 2;
-
       // Draw subtle specular horizontal center beam
       ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.fillRect(0, centerY - (0.5 * dpr), width, 1 * dpr);
+      ctx.fillRect(0, centerY - 0.5 * dpr, width, 1 * dpr);
+
+      // 1. Render dynamic frequency spectrum bars
+      const numBars = 44;
+      const barWidth = Math.max(3, width / numBars - 3 * dpr);
 
       for (let i = 0; i < numBars; i++) {
         const binIndex = Math.floor((i / numBars) * (bufferLength * 0.85));
-        const rawValue = dataArray[binIndex] || 0;
+        const rawValue = freqArray[binIndex] || 0;
         const normalized = rawValue / 255;
-        const halfHeight = Math.max(3 * dpr, (normalized * height * 0.44));
+        const halfHeight = Math.max(2.5 * dpr, normalized * height * 0.44);
         const x = i * (barWidth + 3 * dpr);
         const y = centerY - halfHeight;
         const fullHeight = halfHeight * 2;
 
-        // Sleek monochrome studio gradient: pure silver-white to titanium slate
+        // Sleek monochrome studio gradient: pure silver-white to slate
         const grad = ctx.createLinearGradient(0, y, 0, y + fullHeight);
         grad.addColorStop(0, '#ffffff');
         grad.addColorStop(0.5, '#cbd5e1');
@@ -264,10 +309,55 @@ export function VoiceRecorderTab() {
         }
         ctx.fill();
       }
+
+      // 2. Render live voice waveform line over the bars
+      ctx.beginPath();
+      const sliceWidth = width / timeArray.length;
+      let waveX = 0;
+      for (let i = 0; i < timeArray.length; i++) {
+        const v = timeArray[i] / 128.0; // 1.0 is center
+        const waveY = centerY + (v - 1.0) * (height * 0.40);
+        if (i === 0) {
+          ctx.moveTo(waveX, waveY);
+        } else {
+          ctx.lineTo(waveX, waveY);
+        }
+        waveX += sliceWidth;
+      }
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.stroke();
     };
 
     render();
   };
+
+  // Keep canvas visualizer state in sync with recording lifecycle
+  useEffect(() => {
+    if (isRecording && !isPaused) {
+      startVisualizer();
+    } else {
+      startIdleVisualizer();
+    }
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isRecording, isPaused]);
+
+  // Window resize observer for high-DPI canvas
+  useEffect(() => {
+    const handleResize = () => {
+      if (isRecording && !isPaused) {
+        startVisualizer();
+      } else {
+        startIdleVisualizer();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isRecording, isPaused]);
 
   const handleGrantMicPermission = async () => {
     try {
@@ -677,20 +767,12 @@ export function VoiceRecorderTab() {
           </div>
         </div>
 
-        {/* Studio Monochrome Frequency Spectrum Canvas */}
-        <div className="w-full max-w-lg h-20 bg-black/50 rounded-2xl border border-white/5 flex items-center justify-center overflow-hidden p-2 relative shadow-inner">
-          {isRecording ? (
-            <canvas
-              ref={canvasRef}
-              width={480}
-              height={76}
-              className="w-full h-full"
-            />
-          ) : (
-            <div className="flex items-center justify-center opacity-20">
-              <AudioWaveform className="w-7 h-7 text-slate-400" />
-            </div>
-          )}
+        {/* Studio Live Voice Oscilloscope & Frequency Spectrum Graph */}
+        <div className="w-full max-w-lg h-24 bg-black/60 rounded-2xl border border-white/10 flex items-center justify-center overflow-hidden p-2 relative shadow-inner">
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full block"
+          />
         </div>
 
         {/* Recording Controls */}

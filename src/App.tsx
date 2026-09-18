@@ -242,6 +242,30 @@ export function App() {
     };
   }, []);
 
+  // Preload all module code chunks in background during idle time so tab switches are instantaneous
+  useEffect(() => {
+    const preloadModules = () => {
+      import('./components/DualPaneConverter');
+      import('./components/FilesHubTab');
+      import('./components/TasksTab');
+      import('./components/ClockSuiteTab');
+      import('./components/RichNotesTab');
+      import('./components/SmartCalculatorTab');
+      import('./components/CalendarPlannerTab');
+      import('./components/WidgetStudioTab');
+      import('./components/VoiceRecorderTab');
+      import('./components/CompassTab');
+      import('./components/SettingsPage');
+    };
+
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(preloadModules);
+    } else {
+      const timer = setTimeout(preloadModules, 800);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   useEffect(() => {
     const checkEntrancePermissions = async () => {
       const perms = await checkAllStartupPermissionsNative();
@@ -482,6 +506,7 @@ export function App() {
 
     if (pendingNavRafRef.current) {
       cancelAnimationFrame(pendingNavRafRef.current);
+      pendingNavRafRef.current = null;
     }
 
     isInternalNavRef.current = true;
@@ -494,14 +519,10 @@ export function App() {
       isInternalNavRef.current = false;
     }, 120);
 
-    // Defer the heavy tab render to the next animation frame so the slider starts its 120 FPS motion instantly
-    pendingNavRafRef.current = requestAnimationFrame(() => {
-      startTransition(() => {
-        setSlideDirection(dir);
-        setActiveModule(mod);
-      });
-    });
-  }, [startTransition]);
+    // Instant direct tab switch with zero scheduler lag
+    setSlideDirection(dir);
+    setActiveModule(mod);
+  }, []);
 
   // --------------------------------------------------------------------------
   // Android Hardware / Gesture Back Navigation & Double-Tap Exit

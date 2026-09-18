@@ -233,12 +233,29 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     };
   }, []);
 
-  const selectModule = (modId: AppModule) => {
+  // Pending commit timer to avoid unmounting/mounting full pages rapidly while finger is moving
+  const pendingCommitTimerRef = useRef<any>(null);
+
+  const commitModuleChange = (modId: AppModule, immediate = false) => {
     setLocalActiveModule(modId);
-    onSelectModule(modId);
+    if (pendingCommitTimerRef.current) {
+      clearTimeout(pendingCommitTimerRef.current);
+      pendingCommitTimerRef.current = null;
+    }
+    if (immediate) {
+      onSelectModule(modId);
+    } else {
+      pendingCommitTimerRef.current = setTimeout(() => {
+        onSelectModule(modId);
+      }, 50);
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pendingCommitTimerRef.current) {
+      clearTimeout(pendingCommitTimerRef.current);
+      pendingCommitTimerRef.current = null;
+    }
     isDraggingRef.current = true;
     setIsDragging(true);
     startXRef.current = e.clientX;
@@ -277,7 +294,9 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
         accumulatedDeltaRef.current += steps * STEP_PX;
         stepsTakenRef.current += steps;
         const newIdx = (activeIdxRef.current + steps) % numItems;
-        selectModule(ARC_ITEMS[newIdx].id);
+        activeIdxRef.current = newIdx;
+        const targetMod = ARC_ITEMS[newIdx].id;
+        commitModuleChange(targetMod, false);
         if (navigator.vibrate) navigator.vibrate(10);
       }
     } else if (accumulatedDeltaRef.current >= STEP_PX) {
@@ -286,7 +305,9 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
         accumulatedDeltaRef.current -= steps * STEP_PX;
         stepsTakenRef.current += steps;
         const newIdx = (activeIdxRef.current - steps + numItems * 100) % numItems;
-        selectModule(ARC_ITEMS[newIdx].id);
+        activeIdxRef.current = newIdx;
+        const targetMod = ARC_ITEMS[newIdx].id;
+        commitModuleChange(targetMod, false);
         if (navigator.vibrate) navigator.vibrate(10);
       }
     }
@@ -308,6 +329,11 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     setIsDragging(false);
 
+    if (pendingCommitTimerRef.current) {
+      clearTimeout(pendingCommitTimerRef.current);
+      pendingCommitTimerRef.current = null;
+    }
+
     const totalTravel = e.clientX - startXRef.current;
 
     // "one slide, one movement": If user performed a single swipe/flick without continuous holding
@@ -316,11 +342,18 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
       if (isFlick) {
         const step = (totalTravel < 0 || velocityXRef.current < -0.22) ? 1 : -1;
         const newIdx = (activeIdxRef.current + step + numItems * 100) % numItems;
-        selectModule(ARC_ITEMS[newIdx].id);
+        activeIdxRef.current = newIdx;
+        const targetMod = ARC_ITEMS[newIdx].id;
+        commitModuleChange(targetMod, true);
         if (navigator.vibrate) navigator.vibrate(12);
+        setDragOffsetPx(0);
+        return;
       }
     }
 
+    // Immediately commit whatever item is currently centered
+    const finalMod = ARC_ITEMS[activeIdxRef.current].id;
+    commitModuleChange(finalMod, true);
     setDragOffsetPx(0);
   };
 
@@ -332,7 +365,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
           : 'opacity-100 translate-y-0'
       }`}
     >
-      {/* Sleek Apple VisionOS / iOS 18 Liquid Glass Sliding Dock */}
+      {/* Sleek Obsidian Glass Sliding Dock */}
       <div
         className="relative w-[300px] sm:w-[340px] h-[68px] px-3 rounded-[34px] liquid-glass-arc-dock liquid-specular flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl"
         onPointerDown={handlePointerDown}
@@ -342,12 +375,6 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
       >
         {/* Top crystal specular refraction beam */}
         <div className="absolute top-0 inset-x-8 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/40 to-transparent pointer-events-none" />
-
-        {/* Subtle luminous jewel glow matching the active module */}
-        <div
-          className="absolute -top-2 left-1/2 -translate-x-1/2 w-28 h-9 blur-xl pointer-events-none rounded-full transition-colors duration-300"
-          style={{ backgroundColor: activeItem.glowColor }}
-        />
 
         {/* 1:1 Smooth Continuous Sliding Carousel */}
         {ARC_ITEMS.map((item, i) => {
@@ -381,7 +408,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
               key={item.id}
               type="button"
               onClick={() => {
-                selectModule(item.id);
+                commitModuleChange(item.id, true);
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
               style={{
@@ -391,35 +418,31 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
                 zIndex: isCenter ? 20 : isVisible ? 10 : 0,
                 transition: isDragging
                   ? 'none'
-                  : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease-out',
+                  : 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.16s ease-out',
               }}
               className="absolute top-1 flex flex-col items-center gap-1 select-none active:scale-95 cursor-pointer"
               title={label}
             >
               <div
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 border ${
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-150 border ${
                   isCenter
                     ? `bg-gradient-to-b ${item.accentGrad} text-white border-white/60 dark:border-white/40 shadow-[0_8px_20px_rgba(0,0,0,0.3),inset_0_1.5px_2px_rgba(255,255,255,0.7)]`
                     : 'bg-white/[0.07] dark:bg-white/[0.08] backdrop-blur-xl text-slate-300 dark:text-slate-300 hover:text-white hover:bg-white/15 border-white/10 shadow-sm'
                 }`}
               >
                 <Icon
-                  className={`w-5 h-5 transition-transform duration-200 ${
+                  className={`w-5 h-5 transition-transform duration-150 ${
                     isCenter ? 'scale-110 stroke-[2.4]' : 'scale-90 stroke-[2]'
                   }`}
                 />
               </div>
 
               <div
-                className={`flex items-center gap-1 transition-opacity duration-200 ${
+                className={`flex items-center justify-center transition-opacity duration-150 ${
                   isCenter ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
               >
-                <span
-                  className="w-1.5 h-1.5 rounded-full animate-pulse shadow-sm"
-                  style={{ backgroundColor: item.glowHex }}
-                />
-                <span className="text-[10px] font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm whitespace-nowrap">
+                <span className="text-[10.5px] font-black tracking-tight text-white drop-shadow-sm whitespace-nowrap">
                   {label}
                 </span>
               </div>
