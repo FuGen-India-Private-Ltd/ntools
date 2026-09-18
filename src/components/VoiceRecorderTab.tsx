@@ -173,6 +173,15 @@ export function VoiceRecorderTab() {
     };
   }, []);
 
+  // Permissions updated listener from Android native bridge
+  useEffect(() => {
+    const onPermsUpdated = () => {
+      setMicPermissionError(null);
+    };
+    window.addEventListener('permissions-updated', onPermsUpdated);
+    return () => window.removeEventListener('permissions-updated', onPermsUpdated);
+  }, []);
+
   // Update playback speed whenever selected
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);
@@ -181,7 +190,7 @@ export function VoiceRecorderTab() {
     }
   };
 
-  // Live Visualizer Loop for active recording
+  // High-DPI Live Visualizer Loop for active recording
   const startVisualizer = () => {
     if (!canvasRef.current || !analyserRef.current) return;
     const canvas = canvasRef.current;
@@ -190,6 +199,13 @@ export function VoiceRecorderTab() {
     analyser.fftSize = 128; // 64 frequency bins
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+    }
 
     const render = () => {
       animationFrameRef.current = requestAnimationFrame(render);
@@ -216,28 +232,28 @@ export function VoiceRecorderTab() {
       }
 
       // Render sleek centered dynamic spectrum bars with pill caps
-      const numBars = 48;
-      const barWidth = Math.max(3, width / numBars - 2.5);
+      const numBars = 44;
+      const barWidth = Math.max(3, (width / numBars) - 3 * dpr);
       const centerY = height / 2;
 
       // Draw subtle specular horizontal center beam
-      ctx.fillStyle = 'rgba(244, 63, 94, 0.2)';
-      ctx.fillRect(0, centerY - 0.5, width, 1);
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.25)';
+      ctx.fillRect(0, centerY - (0.5 * dpr), width, 1 * dpr);
 
       for (let i = 0; i < numBars; i++) {
         const binIndex = Math.floor((i / numBars) * (bufferLength * 0.85));
         const rawValue = dataArray[binIndex] || 0;
         const normalized = rawValue / 255;
-        const halfHeight = Math.max(3, (normalized * height * 0.44));
-        const x = i * (barWidth + 2.5);
+        const halfHeight = Math.max(3 * dpr, (normalized * height * 0.44));
+        const x = i * (barWidth + 3 * dpr);
         const y = centerY - halfHeight;
         const fullHeight = halfHeight * 2;
 
-        // Radiant neon gradient: cyan to rose to amber
+        // Radiant neon gradient: cyan to rose to purple
         const grad = ctx.createLinearGradient(0, y, 0, y + fullHeight);
         grad.addColorStop(0, '#06b6d4'); // cyan-500
         grad.addColorStop(0.5, '#f43f5e'); // rose-500
-        grad.addColorStop(1, '#fb7185'); // rose-400
+        grad.addColorStop(1, '#a855f7'); // purple-500
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -256,18 +272,12 @@ export function VoiceRecorderTab() {
   const handleGrantMicPermission = async () => {
     try {
       if (Capacitor.isNativePlatform()) {
-        const res = await requestAudioPermissionNative();
-        if (res.granted) {
-          setMicPermissionError(null);
-          startRecording();
-          return;
-        } else {
-          await openAppDetailsSettingsNative();
-          return;
-        }
+        await requestAudioPermissionNative();
       }
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
       setMicPermissionError(null);
+      startRecording();
     } catch {
       if (Capacitor.isNativePlatform()) {
         await openAppDetailsSettingsNative();
@@ -279,23 +289,6 @@ export function VoiceRecorderTab() {
     setMicPermissionError(null);
     setSaveSuccessNotice(null);
     livePeaksRef.current = [];
-
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const perms = await checkAllStartupPermissionsNative();
-        if (!perms.audioRecord) {
-          const req = await requestAudioPermissionNative();
-          if (!req.granted) {
-            setMicPermissionError(
-              'Microphone permission is required to record audio.'
-            );
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn('Native permission check error:', err);
-      }
-    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -658,44 +651,14 @@ export function VoiceRecorderTab() {
           isRecording ? 'liquid-glass-recording-aura border-rose-500/40' : ''
         }`}
       >
-        {/* Category Tag Selector (Pre-recording) */}
-        {!isRecording && (
-          <div className="flex items-center justify-center gap-1.5 flex-wrap">
-            <span className="text-[11px] font-bold text-slate-400 mr-1">Tag:</span>
-            {(Object.keys(RECORDING_CATEGORIES) as RecordingCategory[]).map((cat) => {
-              const info = RECORDING_CATEGORIES[cat];
-              const isSelected = selectedCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition active:scale-95 flex items-center gap-1.5 ${
-                    isSelected
-                      ? `${info.badge} border`
-                      : 'liquid-glass-btn text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${info.dot}`} />
-                  {info.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
         {/* Animated Timer & Status Pill */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full liquid-glass-capsule text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full liquid-glass-capsule text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
             {isRecording ? (
               <>
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
                 <span className="text-rose-500 font-black tracking-wider uppercase">
                   {isPaused ? 'Recording Paused' : 'Live Recording'}
-                </span>
-                <span className="text-slate-300 dark:text-slate-600">•</span>
-                <span className="text-[11px] text-slate-500 font-mono">
-                  {currentDecibels > -50 ? `${currentDecibels} dB` : 'Quiet'}
                 </span>
               </>
             ) : (
@@ -1123,9 +1086,6 @@ export function VoiceRecorderTab() {
                     {/* Progress Timestamps */}
                     <div className="flex items-center justify-between text-[10px] font-mono font-bold text-slate-400 mt-1 px-1">
                       <span>{isPlaying ? formatSecs(playbackTime) : '00:00'}</span>
-                      <span className="text-[10px] font-sans font-semibold text-slate-400">
-                        {isPlaying ? 'Playing • Click waveform to scrub' : 'Tap waveform to jump'}
-                      </span>
                       <span>{formatSecs(rec.durationSec)}</span>
                     </div>
                   </div>

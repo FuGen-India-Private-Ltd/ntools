@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Compass as CompassIcon,
-  Sparkles,
   Layers,
-  HelpCircle,
-  Sliders
 } from 'lucide-react';
 
 export function CompassTab() {
@@ -13,7 +10,6 @@ export function CompassTab() {
   const [roll, setRoll] = useState<number>(0);   // gamma (-90 to 90)
   const [hasSensor, setHasSensor] = useState<boolean>(false);
   const [isSimulated, setIsSimulated] = useState<boolean>(false);
-  const [showCalibrationHelp, setShowCalibrationHelp] = useState<boolean>(false);
 
   // Smooth animation refs
   const dialRef = useRef<HTMLDivElement>(null);
@@ -112,19 +108,6 @@ export function CompassTab() {
     };
   }, [isSimulated]);
 
-  // Request permission on iOS 13+ if applicable
-  const requestSensorPermission = async () => {
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      try {
-        const res = await (DeviceOrientationEvent as any).requestPermission();
-        if (res === 'granted') {
-          setHasSensor(true);
-        }
-      } catch (err) {
-        console.error('Sensor permission error:', err);
-      }
-    }
-  };
 
   const getCardinalDirection = (deg: number): string => {
     const directions = [
@@ -148,54 +131,12 @@ export function CompassTab() {
             <CompassIcon className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Compass &amp; Level
-              </h2>
-              {hasSensor ? (
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
-                  ● Sensor Active
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25">
-                  Manual Mode
-                </span>
-              )}
-            </div>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              Compass &amp; Level
+            </h2>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowCalibrationHelp(!showCalibrationHelp)}
-          className="p-2.5 rounded-2xl liquid-glass-btn text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white transition active:scale-95"
-          title="Calibration Guide"
-        >
-          <HelpCircle className="w-5 h-5" />
-        </button>
       </div>
-
-      {/* Calibration Guide Banner */}
-      {showCalibrationHelp && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-900 dark:text-emerald-200 space-y-1.5 animate-fadeIn">
-          <div className="flex items-center justify-between font-bold">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-emerald-500" />
-              Compass Accuracy Calibration
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowCalibrationHelp(false)}
-              className="text-emerald-600 dark:text-emerald-400 hover:opacity-80 cursor-pointer"
-            >
-              Close
-            </button>
-          </div>
-          <p className="leading-relaxed text-[11.5px] opacity-90">
-            For maximum accuracy, wave your device in a smooth <strong>figure-8 motion</strong> in the air for 5 seconds. Keep away from strong magnetic fields, laptop chargers, and metal cases.
-          </p>
-        </div>
-      )}
 
       {/* Main Compass Rose Card */}
       <div className="p-6 sm:p-8 rounded-3xl liquid-glass liquid-specular border border-black/10 dark:border-white/10 shadow-sm flex flex-col items-center justify-center text-center space-y-6">
@@ -209,9 +150,6 @@ export function CompassTab() {
               {getCardinalDirection(heading)}
             </span>
           </div>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            {isLevel ? 'Phone is held flat (Optimal)' : 'Hold device flat for best accuracy'}
-          </p>
         </div>
 
         {/* 360-Degree Rotating Compass Dial */}
@@ -302,22 +240,9 @@ export function CompassTab() {
           </div>
         </div>
 
-        {/* Simulation / Manual Controls for devices without magnetometer */}
+        {/* Manual Controls for devices without magnetometer */}
         {!hasSensor && (
-          <div className="w-full max-w-sm p-3.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-              <span className="flex items-center gap-1">
-                <Sliders className="w-3.5 h-3.5 text-slate-400" />
-                Sensor Test / Slider
-              </span>
-              <button
-                type="button"
-                onClick={requestSensorPermission}
-                className="text-[11px] font-bold text-emerald-500 hover:underline cursor-pointer"
-              >
-                Request Permission
-              </button>
-            </div>
+          <div className="w-full max-w-sm p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 space-y-1.5">
             <input
               type="range"
               min="0"

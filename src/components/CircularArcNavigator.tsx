@@ -168,7 +168,9 @@ interface CircularArcNavigatorProps {
   lang: 'en' | 'kn';
 }
 
-const ITEM_WIDTH = 58; // Horizontal spacing between icons
+// Spacing between icons and scrub sensitivity distance (lower = faster, snappier scrub)
+const ITEM_WIDTH = 56;
+const STEP_PX = 30; // 30px per tab change = ultra snappy, agile continuous scrub
 
 export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   activeModule,
@@ -184,16 +186,20 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
 
   const activeIdx = ARC_ITEMS.findIndex((item) => item.id === localActiveModule);
   const activeItem = ARC_ITEMS[activeIdx] || ARC_ITEMS[0];
+  const activeIdxRef = useRef(activeIdx);
+  activeIdxRef.current = activeIdx;
 
   // Drag state
   const [dragOffsetPx, setDragOffsetPx] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  const startXRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef<number>(0);
   const lastClientXRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const velocityXRef = useRef<number>(0);
-  const lastHapticStepRef = useRef<number>(0);
+  const accumulatedDeltaRef = useRef<number>(0);
+  const stepsTakenRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
 
   // Keyboard detection
@@ -228,23 +234,24 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   }, []);
 
   const selectModule = (modId: AppModule) => {
-    if (modId === localActiveModule) return;
     setLocalActiveModule(modId);
     onSelectModule(modId);
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingRef.current = true;
     setIsDragging(true);
     startXRef.current = e.clientX;
     lastClientXRef.current = e.clientX;
     lastTimeRef.current = performance.now();
     velocityXRef.current = 0;
-    lastHapticStepRef.current = 0;
+    accumulatedDeltaRef.current = 0;
+    stepsTakenRef.current = 0;
     setDragOffsetPx(0);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging || startXRef.current === null) return;
+    if (!isDraggingRef.current) return;
     const now = performance.now();
     const dt = Math.max(1, now - lastTimeRef.current);
     const dx = e.clientX - lastClientXRef.current;
@@ -253,30 +260,46 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     lastClientXRef.current = e.clientX;
     lastTimeRef.current = now;
 
-    const totalDelta = e.clientX - startXRef.current;
-    if (Math.abs(totalDelta) > 5) {
+    const totalTravel = e.clientX - startXRef.current;
+    if (Math.abs(totalTravel) > 6) {
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch (_) {}
     }
 
-    // Subtle tactile haptic click when crossing an item boundary
-    const currentStep = Math.round(totalDelta / ITEM_WIDTH);
-    if (currentStep !== lastHapticStepRef.current) {
-      lastHapticStepRef.current = currentStep;
-      if (navigator.vibrate) {
-        navigator.vibrate(8);
+    // Continuous scrubbing: accumulate delta
+    accumulatedDeltaRef.current += dx;
+
+    // Check if scrub crossed forward threshold (moving finger left advances tabs forward)
+    if (accumulatedDeltaRef.current <= -STEP_PX) {
+      const steps = Math.floor(Math.abs(accumulatedDeltaRef.current) / STEP_PX);
+      if (steps > 0) {
+        accumulatedDeltaRef.current += steps * STEP_PX;
+        stepsTakenRef.current += steps;
+        const newIdx = (activeIdxRef.current + steps) % numItems;
+        selectModule(ARC_ITEMS[newIdx].id);
+        if (navigator.vibrate) navigator.vibrate(10);
+      }
+    } else if (accumulatedDeltaRef.current >= STEP_PX) {
+      const steps = Math.floor(accumulatedDeltaRef.current / STEP_PX);
+      if (steps > 0) {
+        accumulatedDeltaRef.current -= steps * STEP_PX;
+        stepsTakenRef.current += steps;
+        const newIdx = (activeIdxRef.current - steps + numItems * 100) % numItems;
+        selectModule(ARC_ITEMS[newIdx].id);
+        if (navigator.vibrate) navigator.vibrate(10);
       }
     }
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
-      setDragOffsetPx(totalDelta);
+      setDragOffsetPx(accumulatedDeltaRef.current);
     });
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
     try {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -285,21 +308,20 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     setIsDragging(false);
 
-    // Compute flick boost from swipe velocity
-    const flickDistance = Math.min(180, Math.max(-180, velocityXRef.current * 90));
-    const finalOffset = dragOffsetPx + flickDistance;
-    const steps = Math.round(-finalOffset / ITEM_WIDTH);
+    const totalTravel = e.clientX - startXRef.current;
 
-    if (steps !== 0) {
-      const targetIdx = (activeIdx + steps + numItems * 100) % numItems;
-      selectModule(ARC_ITEMS[targetIdx].id);
-      if (navigator.vibrate) {
-        navigator.vibrate(12);
+    // "one slide, one movement": If user performed a single swipe/flick without continuous holding
+    if (stepsTakenRef.current === 0) {
+      const isFlick = Math.abs(velocityXRef.current) > 0.22 || Math.abs(totalTravel) > 12;
+      if (isFlick) {
+        const step = (totalTravel < 0 || velocityXRef.current < -0.22) ? 1 : -1;
+        const newIdx = (activeIdxRef.current + step + numItems * 100) % numItems;
+        selectModule(ARC_ITEMS[newIdx].id);
+        if (navigator.vibrate) navigator.vibrate(12);
       }
     }
 
     setDragOffsetPx(0);
-    startXRef.current = null;
   };
 
   return (
