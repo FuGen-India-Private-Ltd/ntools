@@ -956,7 +956,11 @@ export function App() {
       {/* Master Workspace View — Only Active Module Mounted for Minimal DOM & Peak 120 FPS Performance */}
       <main
         className={`flex-1 max-w-6xl w-full mx-auto px-3.5 sm:px-6 pt-3 sm:pt-4 ${
-          activeModule === 'calc' ? 'py-1 pb-24' : 'pb-36 space-y-4'
+          activeModule === 'calc'
+            ? 'py-1 pb-24'
+            : activeModule === 'converter'
+            ? 'pb-24'
+            : 'pb-36 space-y-4'
         }`}
       >
         <div key={activeModule} className={tabAnimClass}>

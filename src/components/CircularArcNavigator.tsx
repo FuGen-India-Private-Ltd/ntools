@@ -400,7 +400,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
                 className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 border ${
                   isCenter
                     ? `bg-gradient-to-b ${item.accentGrad} text-white border-white/60 dark:border-white/40 shadow-[0_8px_20px_rgba(0,0,0,0.3),inset_0_1.5px_2px_rgba(255,255,255,0.7)]`
-                    : 'bg-black/5 dark:bg-white/[0.08] backdrop-blur-xl text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/16 border-black/5 dark:border-white/10 shadow-sm'
+                    : 'bg-white/[0.07] dark:bg-white/[0.08] backdrop-blur-xl text-slate-300 dark:text-slate-300 hover:text-white hover:bg-white/15 border-white/10 shadow-sm'
                 }`}
               >
                 <Icon

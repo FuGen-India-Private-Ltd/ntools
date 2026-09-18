@@ -237,7 +237,7 @@ export function VoiceRecorderTab() {
       const centerY = height / 2;
 
       // Draw subtle specular horizontal center beam
-      ctx.fillStyle = 'rgba(244, 63, 94, 0.25)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.fillRect(0, centerY - (0.5 * dpr), width, 1 * dpr);
 
       for (let i = 0; i < numBars; i++) {
@@ -249,11 +249,11 @@ export function VoiceRecorderTab() {
         const y = centerY - halfHeight;
         const fullHeight = halfHeight * 2;
 
-        // Radiant neon gradient: cyan to rose to purple
+        // Sleek monochrome studio gradient: pure silver-white to titanium slate
         const grad = ctx.createLinearGradient(0, y, 0, y + fullHeight);
-        grad.addColorStop(0, '#06b6d4'); // cyan-500
-        grad.addColorStop(0.5, '#f43f5e'); // rose-500
-        grad.addColorStop(1, '#a855f7'); // purple-500
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.5, '#cbd5e1');
+        grad.addColorStop(1, '#64748b');
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -584,7 +584,7 @@ export function VoiceRecorderTab() {
       {/* Header */}
       <div className="p-4 sm:p-5 rounded-3xl liquid-glass liquid-specular shadow-sm flex items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-sm border border-rose-500/20">
+          <div className="w-11 h-11 rounded-2xl bg-white/10 dark:bg-white/10 text-slate-800 dark:text-slate-100 flex items-center justify-center shrink-0 shadow-sm border border-white/15">
             <Mic className="w-5 h-5" />
           </div>
           <div>
@@ -645,38 +645,40 @@ export function VoiceRecorderTab() {
         </div>
       )}
 
-      {/* Liquid Glass Recording Console Card */}
-      <div
-        className={`p-6 sm:p-8 rounded-3xl liquid-glass-recording-deck liquid-specular transition-all duration-300 flex flex-col items-center justify-center text-center space-y-6 ${
-          isRecording ? 'liquid-glass-recording-aura border-rose-500/40' : ''
-        }`}
-      >
-        {/* Animated Timer & Status Pill */}
+      {/* Studio Minimalist Voice Recording Console */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-[#0d0f14] dark:bg-[#090a0e] border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-6 select-none">
+        {/* Status Pill */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full liquid-glass-capsule text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300 shadow-sm">
             {isRecording ? (
-              <>
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                <span className="text-rose-500 font-black tracking-wider uppercase">
-                  {isPaused ? 'Recording Paused' : 'Live Recording'}
-                </span>
-              </>
+              isPaused ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="text-amber-400 font-bold tracking-wide">PAUSED</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="text-rose-400 font-bold tracking-wider">● REC</span>
+                </>
+              )
             ) : (
-              <span className="text-slate-500 dark:text-slate-400">
-                Ready to Record
-              </span>
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                <span className="text-slate-400">Studio Ready</span>
+              </>
             )}
           </div>
 
           <div>
-            <span className="text-5xl sm:text-6xl font-black font-mono tracking-tight text-slate-900 dark:text-slate-100 drop-shadow-sm">
+            <span className="text-5xl sm:text-6xl font-black font-mono tracking-tight text-white drop-shadow-sm">
               {formatSecs(recordingSeconds)}
             </span>
           </div>
         </div>
 
-        {/* Live Audio Frequency Spectrum Canvas */}
-        <div className="w-full max-w-lg h-20 bg-black/5 dark:bg-black/40 rounded-2xl border border-black/5 dark:border-white/10 flex items-center justify-center overflow-hidden p-2 relative shadow-inner">
+        {/* Studio Monochrome Frequency Spectrum Canvas */}
+        <div className="w-full max-w-lg h-20 bg-black/50 rounded-2xl border border-white/5 flex items-center justify-center overflow-hidden p-2 relative shadow-inner">
           {isRecording ? (
             <canvas
               ref={canvasRef}
@@ -685,85 +687,62 @@ export function VoiceRecorderTab() {
               className="w-full h-full"
             />
           ) : (
-            <div className="flex items-center justify-center opacity-25">
+            <div className="flex items-center justify-center opacity-20">
               <AudioWaveform className="w-7 h-7 text-slate-400" />
             </div>
           )}
         </div>
 
         {/* Recording Controls */}
-        <div className="relative flex items-center justify-center pt-1">
+        <div className="flex items-center justify-center pt-1">
           {!isRecording ? (
-            <div className="relative flex items-center justify-center">
-              {/* Concentric Ambient Breathing Ripples */}
-              <div className="absolute w-28 h-28 rounded-full bg-rose-500/15 dark:bg-rose-500/25 blur-md animate-ping pointer-events-none" />
-              <div className="absolute w-24 h-24 rounded-full border border-rose-500/30 animate-pulse pointer-events-none" />
+            <div className="flex items-center justify-center">
               <button
                 type="button"
                 onClick={startRecording}
-                className="relative z-10 w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-gradient-to-tr from-rose-600 via-rose-500 to-rose-400 hover:from-rose-500 hover:to-rose-400 text-white flex items-center justify-center shadow-2xl shadow-rose-500/50 active:scale-95 transition-all cursor-pointer border border-white/35 animate-mic-breathe"
+                className="w-20 h-20 rounded-full bg-[#161822] hover:bg-[#1d202d] border-2 border-white/15 hover:border-white/30 text-white flex items-center justify-center shadow-2xl active:scale-95 transition-all cursor-pointer group"
                 title="Start Recording"
               >
-                <Mic className="w-9 h-9 sm:w-10 sm:h-10 drop-shadow-md" />
+                {/* Classic studio red record dot */}
+                <div className="w-8 h-8 rounded-full bg-rose-600 group-hover:bg-rose-500 transition-all shadow-md" />
               </button>
             </div>
           ) : (
-            <div className="relative flex items-center justify-center gap-5">
-              {/* Multi-layer expanding concentric sound waves */}
-              <div className="absolute -inset-4 rounded-full bg-rose-500/10 pointer-events-none animate-concentric-1" />
-              <div className="absolute -inset-8 rounded-full border border-rose-500/20 pointer-events-none animate-concentric-2" />
-              <div className="absolute -inset-12 rounded-full border border-rose-500/10 pointer-events-none animate-concentric-3" />
-
+            <div className="flex items-center justify-center gap-6">
               {/* Cancel / Discard */}
               <button
                 type="button"
                 onClick={cancelRecording}
-                className="relative z-10 w-13 h-13 rounded-full liquid-glass-btn text-slate-500 hover:text-rose-500 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-sm"
+                className="w-12 h-12 rounded-full bg-white/5 hover:bg-rose-500/15 border border-white/10 text-slate-400 hover:text-rose-400 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-sm"
                 title="Discard Recording"
               >
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-4 h-4" />
               </button>
 
               {/* Pause / Resume */}
-              {isPaused ? (
-                <button
-                  type="button"
-                  onClick={resumeRecording}
-                  className="relative z-10 w-15 h-15 rounded-full bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-500/30 active:scale-95 transition cursor-pointer border border-white/20"
-                  title="Resume Recording"
-                >
-                  <Play className="w-7 h-7 fill-current ml-0.5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={pauseRecording}
-                  className="relative z-10 w-15 h-15 rounded-full bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-500/30 active:scale-95 transition cursor-pointer border border-white/20"
-                  title="Pause Recording"
-                >
-                  <Pause className="w-7 h-7" />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={isPaused ? resumeRecording : pauseRecording}
+                className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md"
+                title={isPaused ? 'Resume' : 'Pause'}
+              >
+                {isPaused ? (
+                  <Play className="w-6 h-6 fill-current ml-0.5" />
+                ) : (
+                  <Pause className="w-6 h-6" />
+                )}
+              </button>
 
-              {/* Stop & Save with Sound Level Halo */}
-              <div className="relative flex items-center justify-center">
-                <div
-                  className="absolute rounded-full bg-rose-500/30 pointer-events-none transition-transform duration-75"
-                  style={{
-                    width: '76px',
-                    height: '76px',
-                    transform: `scale(${Math.min(1.4, Math.max(1, 1 + (currentDecibels + 50) / 45))})`,
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={stopRecording}
-                  className="relative z-10 w-18 h-18 rounded-full bg-gradient-to-tr from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white flex items-center justify-center shadow-xl shadow-rose-500/40 active:scale-95 transition cursor-pointer border border-white/25"
-                  title="Finish & Save Recording"
-                >
-                  <Square className="w-8 h-8 fill-current" />
-                </button>
-              </div>
+              {/* Stop & Save */}
+              <button
+                type="button"
+                onClick={stopRecording}
+                className="w-16 h-16 rounded-full bg-[#161822] hover:bg-[#1d202d] border-2 border-white/20 text-white flex items-center justify-center shadow-xl active:scale-95 transition cursor-pointer"
+                title="Finish & Save"
+              >
+                {/* Classic studio square */}
+                <div className="w-5 h-5 rounded bg-rose-600" />
+              </button>
             </div>
           )}
         </div>

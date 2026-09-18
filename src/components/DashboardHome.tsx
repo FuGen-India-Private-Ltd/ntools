@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppModule } from './FloatingDock';
 import {
   FileCode,
@@ -14,8 +14,10 @@ import {
   ListTodo,
   Mic,
   Compass,
-  Sparkles,
+  CalendarDays,
+  ChevronRight,
 } from 'lucide-react';
+import { getStoredCalendarEvents, getHolidayForDate } from '../lib/calendarStorage';
 
 interface DashboardHomeProps {
   onNavigate: (module: AppModule) => void;
@@ -190,6 +192,31 @@ export const DashboardHome = React.memo(function DashboardHome({
 }: DashboardHomeProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
+  const today = useMemo(() => new Date(), []);
+  const todayDateStr = useMemo(() => {
+    const y = today.getFullYear();
+    const m = (today.getMonth() + 1).toString().padStart(2, '0');
+    const d = today.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, [today]);
+
+  const todayHoliday = useMemo(() => {
+    return getHolidayForDate(today.getFullYear(), today.getMonth(), today.getDate());
+  }, [today]);
+
+  const todayEvents = useMemo(() => {
+    const all = getStoredCalendarEvents();
+    return all.filter((e) => e.date === todayDateStr && !e.isCompleted);
+  }, [todayDateStr]);
+
+  const todayFormatted = useMemo(() => {
+    return today.toLocaleDateString(lang === 'kn' ? 'kn-IN' : 'en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+  }, [today, lang]);
+
   const filteredTools = TOOLS_LIST.filter((tool) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -202,7 +229,7 @@ export const DashboardHome = React.memo(function DashboardHome({
   });
 
   return (
-    <div className="space-y-4 pb-32 max-w-6xl mx-auto">
+    <div className="space-y-3.5 pb-32 max-w-6xl mx-auto">
       {/* Real-time Search / Filter Bar with Prominent Magnifying Glass Icon */}
       <div className="relative flex items-center">
         <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex items-center pointer-events-none text-slate-400 dark:text-slate-400">
@@ -218,7 +245,7 @@ export const DashboardHome = React.memo(function DashboardHome({
               ? 'ಸಾಧನಗಳನ್ನು ಹುಡುಕಿ (ಉದಾ: Sanka, PDF, Tasks, Notes)...'
               : 'Search tools (e.g. Sanka, PDF, Tasks, Notes)...'
           }
-          className="w-full pl-11 pr-14 py-3 rounded-2xl liquid-glass-input liquid-specular text-xs sm:text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 shadow-sm transition-all duration-200"
+          className="w-full pl-11 pr-14 py-2.5 sm:py-3 rounded-2xl liquid-glass-input liquid-specular text-xs sm:text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 shadow-sm transition-all duration-200"
         />
 
         {searchQuery && (
@@ -232,8 +259,68 @@ export const DashboardHome = React.memo(function DashboardHome({
         )}
       </div>
 
+      {/* Today's Events & Schedule Card (Always Visible on Main Screen Above Fold) */}
+      {!searchQuery && (
+        <div
+          onClick={() => onNavigate('calendar')}
+          className="cursor-pointer rounded-2xl p-3 sm:p-3.5 liquid-glass-card liquid-specular border border-sky-500/25 hover:border-sky-500/50 shadow-sm transition-all duration-150 active:scale-[0.98] select-none"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-500 flex items-center justify-center shrink-0 border border-sky-500/20">
+                <CalendarDays className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                    {lang === 'kn' ? 'ಇಂದಿನ ವೇಳಾಪಟ್ಟಿ' : "Today's Schedule"}
+                  </span>
+                  <span className="text-[11px] font-semibold text-sky-600 dark:text-sky-400">
+                    • {todayFormatted}
+                  </span>
+                </div>
+                {todayHoliday && (
+                  <div className="text-[10.5px] font-bold text-amber-600 dark:text-amber-400 truncate">
+                    🎉 {todayHoliday.name}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0 text-xs font-bold text-sky-500">
+              <span>{todayEvents.length > 0 ? `${todayEvents.length} ${todayEvents.length === 1 ? 'event' : 'events'}` : (lang === 'kn' ? 'ತೆರೆಯಿರಿ' : 'View')}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </div>
+          </div>
+
+          {/* Today's Event Pills preview */}
+          {todayEvents.length > 0 ? (
+            <div className="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
+              {todayEvents.slice(0, 4).map((evt) => (
+                <span
+                  key={evt.id}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-black/5 dark:bg-white/10 text-slate-800 dark:text-slate-200 border border-black/5 dark:border-white/10 whitespace-nowrap flex items-center gap-1"
+                >
+                  {evt.startTime && <span className="text-sky-500 font-mono">{evt.startTime}</span>}
+                  <span className="truncate max-w-[120px]">{evt.title}</span>
+                </span>
+              ))}
+              {todayEvents.length > 4 && (
+                <span className="text-[10px] font-bold text-slate-400 pl-1">
+                  +{todayEvents.length - 4} more
+                </span>
+              )}
+            </div>
+          ) : !todayHoliday ? (
+            <div className="mt-1 text-[10.5px] text-slate-400 dark:text-slate-500 font-medium">
+              {lang === 'kn' ? 'ಇಂದು ಯಾವುದೇ ಕಾರ್ಯಕ್ರಮಗಳಿಲ್ಲ • ಸೇರಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ' : 'No events scheduled for today • Tap to add'}
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {/* Expanded Modern Bento Grid: Full Tool Names with Staggered Fade-in */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {filteredTools.map((tool) => {
           const Icon = tool.icon;
           const title = lang === 'kn' ? tool.titleKn : tool.titleEn;
@@ -242,22 +329,22 @@ export const DashboardHome = React.memo(function DashboardHome({
             <div
               key={tool.id}
               onClick={() => onNavigate(tool.id)}
-              className={`group cursor-pointer rounded-3xl p-4 sm:p-5 liquid-glass-card liquid-specular ${tool.borderColor} shadow-sm hover:shadow-2xl ${tool.glowColor} hover:-translate-y-0.5 transition-all duration-100 flex flex-col justify-between min-h-[108px] sm:min-h-[120px] active:scale-[0.97] select-none animate-fade-in`}
+              className={`group cursor-pointer rounded-2xl sm:rounded-3xl p-3 sm:p-4 liquid-glass-card liquid-specular ${tool.borderColor} shadow-sm hover:shadow-xl ${tool.glowColor} hover:-translate-y-0.5 transition-all duration-100 flex flex-col justify-between min-h-[92px] sm:min-h-[105px] active:scale-[0.97] select-none animate-fade-in`}
             >
               <div className="flex items-center justify-between w-full">
                 <div
-                  className={`w-10 h-10 rounded-2xl ${tool.iconBg} ${tool.iconColor} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-100`}
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl ${tool.iconBg} ${tool.iconColor} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-100`}
                 >
-                  <Icon className="w-5 h-5 stroke-[2.2]" />
+                  <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-black dark:group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-100" />
+                <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-black dark:group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-100" />
               </div>
 
-              <div className="mt-2.5 w-full">
-                <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug group-hover:text-black dark:group-hover:text-white transition-colors break-words">
+              <div className="mt-2 w-full">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight group-hover:text-black dark:group-hover:text-white transition-colors break-words">
                   {title}
                 </h3>
-                <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                <p className="text-[9.5px] sm:text-[10.5px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
                   {lang === 'kn' ? tool.subtitleKn : tool.subtitleEn}
                 </p>
               </div>

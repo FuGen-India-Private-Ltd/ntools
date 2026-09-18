@@ -80,9 +80,9 @@ export const DualPaneConverter = React.memo(function DualPaneConverter({ t }: Du
   };
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-3 pb-20 select-none">
+    <div className="max-w-6xl mx-auto flex flex-col gap-2.5 pb-2 select-none">
       {/* Top Status & Options Bar */}
-      <div className="rounded-2xl liquid-glass liquid-specular px-4 py-2.5 shadow-sm flex items-center justify-between gap-3 shrink-0">
+      <div className="rounded-2xl liquid-glass liquid-specular px-4 py-2 shadow-sm flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-7 h-7 rounded-lg liquid-glass-accent flex items-center justify-center shrink-0">
             <FileCode className="w-4 h-4" />
@@ -122,11 +122,11 @@ export const DualPaneConverter = React.memo(function DualPaneConverter({ t }: Du
       </div>
 
       {/* Dual Pane Layout with Clearly Defined Bordered Containers & Smooth Focus Transitions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5">
         {/* 1. Visible Source Input Container */}
-        <div className="rounded-3xl liquid-glass-card liquid-specular border-2 border-white/60 dark:border-white/10 focus-within:border-black/50 dark:focus-within:border-white/50 transition-all duration-300 p-4 shadow-sm flex flex-col h-64 sm:h-72">
+        <div className="rounded-2xl sm:rounded-3xl liquid-glass-card liquid-specular border-2 border-white/60 dark:border-white/10 focus-within:border-black/50 dark:focus-within:border-white/50 transition-all duration-300 p-3 sm:p-4 shadow-sm flex flex-col h-44 sm:h-64">
           {/* Header */}
-          <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/50 dark:border-slate-800/60 shrink-0">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200/50 dark:border-slate-800/60 shrink-0">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
               <FileCode className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
               Source Text (Type or Paste)
@@ -159,20 +159,20 @@ export const DualPaneConverter = React.memo(function DualPaneConverter({ t }: Du
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Type or paste Nudi / Baraha / Shree-Lipi ASCII or Unicode Kannada text here... (Auto-detection starts automatically)"
-            className="flex-1 w-full bg-transparent resize-none outline-none text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 font-sans p-2 overflow-y-auto leading-relaxed"
+            className="flex-1 w-full bg-transparent resize-none outline-none text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 font-sans p-1.5 overflow-y-auto leading-relaxed"
           />
 
           {/* Footer stats */}
-          <div className="text-[10.5px] font-medium text-slate-400 pt-2 border-t border-slate-200/50 dark:border-slate-800/60 shrink-0 flex justify-between items-center">
+          <div className="text-[10px] font-medium text-slate-400 pt-1.5 border-t border-slate-200/50 dark:border-slate-800/60 shrink-0 flex justify-between items-center">
             <span className="text-slate-800 dark:text-slate-200 font-bold">Input Box</span>
             <span>{inputText.length} chars • {inputText.trim().split(/\s+/).filter(Boolean).length} words</span>
           </div>
         </div>
 
         {/* 2. Visible Converted Result Container */}
-        <div className="rounded-3xl liquid-glass-card liquid-specular border-2 border-white/60 dark:border-white/10 p-4 shadow-sm flex flex-col h-64 sm:h-72 transition-all duration-300">
+        <div className="rounded-2xl sm:rounded-3xl liquid-glass-card liquid-specular border-2 border-white/60 dark:border-white/10 p-3 sm:p-4 shadow-sm flex flex-col h-44 sm:h-64 transition-all duration-300">
           {/* Header */}
-          <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/50 dark:border-slate-800/60 shrink-0">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200/50 dark:border-slate-800/60 shrink-0">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
               Converted Result

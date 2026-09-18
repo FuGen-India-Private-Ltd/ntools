@@ -369,25 +369,25 @@
 .animate-soundbar-3 { animation: soundbar-dance-3 0.85s ease-in-out infinite 0.3s; }
 .animate-soundbar-4 { animation: soundbar-dance-4 0.70s ease-in-out infinite 0.45s; }
 
-/* Liquid Glass Modern Floating Dock */
+/* Liquid Glass Modern Floating Dock - Dark Obsidian Glass */
 .liquid-glass-arc-dock {
   backdrop-filter: blur(40px) saturate(220%);
   -webkit-backdrop-filter: blur(40px) saturate(220%);
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: rgba(18, 20, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.04),
-    0 20px 48px -8px rgba(0, 0, 0, 0.16);
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.8),
+    0 24px 64px -6px rgba(0, 0, 0, 0.6);
 }
 
 .dark .liquid-glass-arc-dock {
-  background: rgba(18, 20, 26, 0.76);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(8, 9, 13, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.6),
-    0 24px 60px -10px rgba(0, 0, 0, 0.85);
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.95),
+    0 24px 64px -6px rgba(0, 0, 0, 0.98);
 }
 
 /* Liquid Glass Voice Recording Deck & Aura */
@@ -549,14 +549,14 @@
 }
 
 .animate-tab-switch {
-  animation: tabSwitchFadeScale 0.22s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-  will-change: transform, opacity;
+  animation: pageCrossFade 0.12s ease-out forwards;
+  will-change: opacity;
 }
 
 @keyframes pageSlideInRight {
   0% {
-    opacity: 0;
-    transform: translate3d(12px, 0, 0);
+    opacity: 0.88;
+    transform: translate3d(6px, 0, 0);
   }
   100% {
     opacity: 1;
@@ -566,8 +566,8 @@
 
 @keyframes pageSlideInLeft {
   0% {
-    opacity: 0;
-    transform: translate3d(-12px, 0, 0);
+    opacity: 0.88;
+    transform: translate3d(-6px, 0, 0);
   }
   100% {
     opacity: 1;
@@ -577,7 +577,7 @@
 
 @keyframes pageCrossFade {
   0% {
-    opacity: 0;
+    opacity: 0.88;
   }
   100% {
     opacity: 1;
@@ -585,17 +585,17 @@
 }
 
 .animate-page-slide-right {
-  animation: pageSlideInRight 0.20s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation: pageSlideInRight 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
 }
 
 .animate-page-slide-left {
-  animation: pageSlideInLeft 0.20s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation: pageSlideInLeft 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
 }
 
 .animate-page-fade {
-  animation: pageCrossFade 0.18s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation: pageCrossFade 0.10s ease-out forwards;
   will-change: opacity;
 }
 
