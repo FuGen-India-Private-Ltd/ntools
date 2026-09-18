@@ -15,8 +15,10 @@ import org.json.JSONObject;
 
 public class AlarmReceiver extends BroadcastReceiver {
 
+    public static final String ACTION_ALARM_TRIGGER = "com.unicodeascii.converter.ACTION_ALARM_TRIGGER";
     public static final String ACTION_DISMISS_ALARM = "com.unicodeascii.converter.ACTION_DISMISS_ALARM";
     public static final String ACTION_SNOOZE_ALARM = "com.unicodeascii.converter.ACTION_SNOOZE_ALARM";
+    public static final String ACTION_DISMISS_UPCOMING = "com.unicodeascii.converter.ACTION_DISMISS_UPCOMING";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -30,24 +32,33 @@ public class AlarmReceiver extends BroadcastReceiver {
             alarmLabel = "Alarm";
         }
 
-        // Case A: User Tapped "Turn Off / Dismiss" on Notification or Overlay
+        // Case A: User Tapped "Turn Off" on Upcoming Alarm in Status Bar
+        if (ACTION_DISMISS_UPCOMING.equals(action)) {
+            handleDismissUpcomingAlarm(context, alarmId);
+            return;
+        }
+
+        // Case B: User Tapped "Turn Off / Dismiss" on Ringing Notification or Overlay
         if (ACTION_DISMISS_ALARM.equals(action)) {
             handleDismissRingingAlarm(context, alarmId);
             return;
         }
 
-        // Case B: User Tapped "Snooze" (10m) on Notification or Overlay
+        // Case C: User Tapped "Snooze" (10m) on Notification or Overlay
         if (ACTION_SNOOZE_ALARM.equals(action)) {
             handleSnoozeRingingAlarm(context, alarmId, alarmLabel, alarmTime, alarmSound);
             return;
         }
 
-        // Case C: Actual Alarm Rings -> Start Foreground AlarmService
+        // Case D: Actual Alarm Rings -> Start Foreground AlarmService
         handleActualAlarmTrigger(context, alarmId, alarmLabel, alarmTime, alarmSound);
     }
 
     private void handleActualAlarmTrigger(Context context, String alarmId, String alarmLabel, String alarmTime, String alarmSound) {
-        // 1. Acquire 15-second CPU WakeLock to guarantee device stays awake during service launch
+        // Cancel the upcoming notification as this alarm is actively ringing
+        BootReceiver.cancelUpcomingAlarmNotification(context);
+
+        // 1. Acquire 30-second CPU WakeLock to guarantee device stays awake during service launch
         try {
             PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
@@ -55,7 +66,7 @@ public class AlarmReceiver extends BroadcastReceiver {
                     PowerManager.PARTIAL_WAKE_LOCK,
                     "ntools:alarm_trigger_wake"
                 );
-                wl.acquire(15000); // 15 seconds
+                wl.acquire(30000); // 30 seconds
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -63,6 +74,18 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         // 2. Start robust, continuous Foreground Service for ringing audio + vibration + notification
         AlarmService.startAlarm(context, alarmId, alarmLabel, alarmTime, alarmSound);
+    }
+
+    private void handleDismissUpcomingAlarm(Context context, String alarmId) {
+        try {
+            if (alarmId != null && !alarmId.isEmpty()) {
+                disableOneTimeAlarm(context, alarmId);
+            }
+            BootReceiver.rescheduleAllClockAlarms(context);
+            Toast.makeText(context, "Upcoming alarm turned off", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void handleDismissRingingAlarm(Context context, String alarmId) {
@@ -102,6 +125,8 @@ public class AlarmReceiver extends BroadcastReceiver {
             AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
             if (am != null) {
                 Intent snoozeIntent = new Intent(context, AlarmReceiver.class);
+                snoozeIntent.setAction(ACTION_ALARM_TRIGGER);
+                snoozeIntent.setData(android.net.Uri.parse("ntools://alarm/" + alarmId + "_snooze"));
                 snoozeIntent.putExtra("alarmId", alarmId);
                 snoozeIntent.putExtra("alarmLabel", alarmLabel + " (Snoozed)");
                 snoozeIntent.putExtra("alarmTime", alarmTime);
@@ -117,13 +142,28 @@ public class AlarmReceiver extends BroadcastReceiver {
                 showIntent.putExtra("route", "clock");
                 PendingIntent showPI = PendingIntent.getActivity(context, (alarmId + "_snooze_show").hashCode(), showIntent, flags);
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                boolean canScheduleExact = true;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    try {
+                        canScheduleExact = am.canScheduleExactAlarms();
+                    } catch (Exception ignored) {}
+                }
+
+                if (canScheduleExact && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     am.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAt, showPI), pi);
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
                 } else {
                     am.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
                 }
+
+                BootReceiver.updateUpcomingAlarmNotification(
+                    context,
+                    triggerAt,
+                    new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(new java.util.Date(triggerAt)),
+                    alarmLabel + " (Snoozed)",
+                    alarmId
+                );
             }
 
             Toast.makeText(context, "Alarm snoozed for 10 minutes", Toast.LENGTH_SHORT).show();

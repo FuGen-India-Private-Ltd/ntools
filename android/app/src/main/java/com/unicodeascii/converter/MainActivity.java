@@ -23,7 +23,13 @@ public class MainActivity extends BridgeActivity {
                 ws.setDomStorageEnabled(true);
                 ws.setDatabaseEnabled(true);
                 ws.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
-                wv.setLayerType(android.view.View.LAYER_TYPE_NONE, null);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    ws.setOffscreenPreRaster(true);
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    ws.setSafeBrowsingEnabled(false);
+                }
+                wv.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
 
                 wv.setWebChromeClient(new com.getcapacitor.BridgeWebChromeClient(getBridge()) {
                     @Override
@@ -82,6 +88,11 @@ public class MainActivity extends BridgeActivity {
                 getBridge().getWebView().onResume();
             }
         } catch (Exception ignored) {}
+
+        // Ensure alarms and upcoming status bar notifications are synchronized when app resumes
+        try {
+            BootReceiver.rescheduleAllClockAlarms(this);
+        } catch (Exception ignored) {}
     }
 
     private void requestNeededPermissions() {
@@ -99,6 +110,12 @@ public class MainActivity extends BridgeActivity {
             }
             if (!perms.isEmpty()) {
                 requestPermissions(perms.toArray(new String[0]), 101);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                android.app.AlarmManager am = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+                if (am != null && !am.canScheduleExactAlarms()) {
+                    dispatchJsEvent("exact-alarm-permission-needed");
+                }
             }
         } catch (Exception ignored) {}
     }

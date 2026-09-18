@@ -183,6 +183,19 @@ export function ClockSuiteTab() {
   }, [alarms]);
 
   useEffect(() => {
+    const handleFocusSync = () => {
+      refreshPermissions();
+      syncAlarmsToNative(alarms);
+    };
+    window.addEventListener('focus', handleFocusSync);
+    window.addEventListener('permissions-updated', handleFocusSync);
+    return () => {
+      window.removeEventListener('focus', handleFocusSync);
+      window.removeEventListener('permissions-updated', handleFocusSync);
+    };
+  }, [alarms]);
+
+  useEffect(() => {
     getAllCustomAudioTracks().then((tracks) => setSavedTracks(tracks));
   }, []);
 

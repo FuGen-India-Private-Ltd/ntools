@@ -250,7 +250,14 @@
         <!-- High-Priority Alarm Broadcast Receiver -->
         <receiver
             android:name=".AlarmReceiver"
-            android:exported="false" />
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.unicodeascii.converter.ACTION_ALARM_TRIGGER" />
+                <action android:name="com.unicodeascii.converter.ACTION_DISMISS_ALARM" />
+                <action android:name="com.unicodeascii.converter.ACTION_SNOOZE_ALARM" />
+                <action android:name="com.unicodeascii.converter.ACTION_DISMISS_UPCOMING" />
+            </intent-filter>
+        </receiver>
 
         <!-- Task Reminder Broadcast Receiver for Exact Alarms -->
         <receiver
@@ -295,6 +302,7 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />

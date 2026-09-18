@@ -174,7 +174,7 @@ public class AlarmService extends Service {
         String subtitle = "Scheduled for " + (currentAlarmTime != null ? currentAlarmTime : "now");
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ALARM_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
             .setContentTitle(title)
             .setContentText(subtitle)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -184,8 +184,8 @@ public class AlarmService extends Service {
             .setAutoCancel(false)
             .setContentIntent(fullScreenPI)
             .setFullScreenIntent(fullScreenPI, true)
-            .addAction(R.mipmap.ic_launcher, "Turn Off", dismissPI)
-            .addAction(R.mipmap.ic_launcher, "Snooze (10m)", snoozePI);
+            .addAction(R.drawable.ic_stat_alarm, "Turn Off", dismissPI)
+            .addAction(R.drawable.ic_stat_alarm, "Snooze (10m)", snoozePI);
 
         Notification notification = builder.build();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

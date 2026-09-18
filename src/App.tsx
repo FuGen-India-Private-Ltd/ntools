@@ -26,19 +26,21 @@ import { parseDeepLinkRoute, dispatchRouteFeatureEvents } from './lib/widgetRout
 import { AlarmItem, getStoredAlarms, saveStoredAlarms } from './lib/timeAndClock';
 import { audioAlerts } from './lib/audioAlerts';
 import { ActiveAlarmRingingModal } from './components/ActiveAlarmRingingModal';
-import { TasksTab } from './components/TasksTab';
-import { ClockSuiteTab } from './components/ClockSuiteTab';
-import { SmartCalculatorTab } from './components/SmartCalculatorTab';
-
-import { DualPaneConverter } from './components/DualPaneConverter';
-import { FilesHubTab } from './components/FilesHubTab';
-import { RichNotesTab } from './components/RichNotesTab';
-import { CalendarPlannerTab } from './components/CalendarPlannerTab';
-import { WidgetStudioTab } from './components/WidgetStudioTab';
-import { SettingsPage } from './components/SettingsPage';
-import { VoiceRecorderTab } from './components/VoiceRecorderTab';
-import { CompassTab } from './components/CompassTab';
 import { ArcSliderTutorialModal } from './components/ArcSliderTutorialModal';
+
+// High-Performance Dynamic Code-Splitting: Only DashboardHome is bundled statically;
+// All specialized modules load on-demand in the background for instant app cold-boot
+const TasksTab = React.lazy(() => import('./components/TasksTab').then((m) => ({ default: m.TasksTab })));
+const ClockSuiteTab = React.lazy(() => import('./components/ClockSuiteTab').then((m) => ({ default: m.ClockSuiteTab })));
+const SmartCalculatorTab = React.lazy(() => import('./components/SmartCalculatorTab').then((m) => ({ default: m.SmartCalculatorTab })));
+const DualPaneConverter = React.lazy(() => import('./components/DualPaneConverter').then((m) => ({ default: m.DualPaneConverter })));
+const FilesHubTab = React.lazy(() => import('./components/FilesHubTab').then((m) => ({ default: m.FilesHubTab })));
+const RichNotesTab = React.lazy(() => import('./components/RichNotesTab').then((m) => ({ default: m.RichNotesTab })));
+const CalendarPlannerTab = React.lazy(() => import('./components/CalendarPlannerTab').then((m) => ({ default: m.CalendarPlannerTab })));
+const WidgetStudioTab = React.lazy(() => import('./components/WidgetStudioTab').then((m) => ({ default: m.WidgetStudioTab })));
+const SettingsPage = React.lazy(() => import('./components/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const VoiceRecorderTab = React.lazy(() => import('./components/VoiceRecorderTab').then((m) => ({ default: m.VoiceRecorderTab })));
+const CompassTab = React.lazy(() => import('./components/CompassTab').then((m) => ({ default: m.CompassTab })));
 import {
   Sun,
   Moon,
@@ -263,6 +265,12 @@ export function App() {
       if (perms.allEssentialGranted) {
         setShowEntrancePermissionModal(false);
       }
+      try {
+        const stored = getStoredAlarms();
+        if (stored && stored.length > 0) {
+          syncAlarmsToNative(stored);
+        }
+      } catch (e) {}
     };
 
     window.addEventListener('focus', onFocus);
@@ -304,9 +312,22 @@ export function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [startTransition]);
 
-  // Sync widgets on mount
+  // Sync widgets & alarms on mount
   useEffect(() => {
+    try {
+      const stored = getStoredAlarms();
+      if (stored && stored.length > 0) {
+        syncAlarmsToNative(stored);
+      }
+    } catch (e) {}
     triggerSyncAllWidgets();
+
+    const onExactNeeded = () => {
+      setHasExactAlarmPermission(false);
+      setShowEntrancePermissionModal(true);
+    };
+    window.addEventListener('exact-alarm-permission-needed', onExactNeeded);
+    return () => window.removeEventListener('exact-alarm-permission-needed', onExactNeeded);
   }, []);
 
   // Toast message listener - Fast auto-dismiss (1.6s)
@@ -939,39 +960,49 @@ export function App() {
         }`}
       >
         <div key={activeModule} className={tabAnimClass}>
-          {activeModule === 'dashboard' && (
+          {activeModule === 'dashboard' ? (
             <DashboardHome
               lang={lang}
               onNavigate={handleSelectModule}
               onOpenTutorial={() => setIsDialTutorialOpen(true)}
             />
-          )}
-          {activeModule === 'converter' && <DualPaneConverter t={t} />}
-          {activeModule === 'files' && <FilesHubTab />}
-          {activeModule === 'tasks' && <TasksTab />}
-          {activeModule === 'clock' && <ClockSuiteTab />}
-          {activeModule === 'notes' && <RichNotesTab />}
-          {activeModule === 'calc' && <SmartCalculatorTab />}
-          {activeModule === 'calendar' && <CalendarPlannerTab />}
-          {activeModule === 'widgets' && <WidgetStudioTab />}
-          {activeModule === 'recorder' && <VoiceRecorderTab />}
-          {activeModule === 'compass' && <CompassTab />}
-          {activeModule === 'settings' && (
-            <SettingsPage
-              currentLang={lang}
-              onLanguageChange={(l) => {
-                setLang(l);
-                localStorage.setItem('kannada_lang', l);
-              }}
-              isDarkMode={isDarkMode}
-              onThemeChange={setIsDarkMode}
-              defaultTool={defaultTool}
-              onDefaultToolChange={(tool) => {
-                setDefaultTool(tool);
-                localStorage.setItem('kannada_default_tool', tool);
-              }}
-              onOpenTutorial={() => setIsDialTutorialOpen(true)}
-            />
+          ) : (
+            <React.Suspense
+              fallback={
+                <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3 text-slate-500 dark:text-slate-400">
+                  <div className="w-8 h-8 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin" />
+                  <span className="text-xs font-semibold tracking-wide">Loading module...</span>
+                </div>
+              }
+            >
+              {activeModule === 'converter' && <DualPaneConverter t={t} />}
+              {activeModule === 'files' && <FilesHubTab />}
+              {activeModule === 'tasks' && <TasksTab />}
+              {activeModule === 'clock' && <ClockSuiteTab />}
+              {activeModule === 'notes' && <RichNotesTab />}
+              {activeModule === 'calc' && <SmartCalculatorTab />}
+              {activeModule === 'calendar' && <CalendarPlannerTab />}
+              {activeModule === 'widgets' && <WidgetStudioTab />}
+              {activeModule === 'recorder' && <VoiceRecorderTab />}
+              {activeModule === 'compass' && <CompassTab />}
+              {activeModule === 'settings' && (
+                <SettingsPage
+                  currentLang={lang}
+                  onLanguageChange={(l) => {
+                    setLang(l);
+                    localStorage.setItem('kannada_lang', l);
+                  }}
+                  isDarkMode={isDarkMode}
+                  onThemeChange={setIsDarkMode}
+                  defaultTool={defaultTool}
+                  onDefaultToolChange={(tool) => {
+                    setDefaultTool(tool);
+                    localStorage.setItem('kannada_default_tool', tool);
+                  }}
+                  onOpenTutorial={() => setIsDialTutorialOpen(true)}
+                />
+              )}
+            </React.Suspense>
           )}
         </div>
       </main>
