@@ -27,8 +27,17 @@ public class BootReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()) ||
-            Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) {
+        if (intent == null) return;
+        String action = intent.getAction();
+        if (action == null) return;
+
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action) ||
+            Intent.ACTION_MY_PACKAGE_REPLACED.equals(action) ||
+            "android.intent.action.QUICKBOOT_POWERON".equals(action) ||
+            "com.htc.intent.action.QUICKBOOT_POWERON".equals(action) ||
+            Intent.ACTION_TIME_CHANGED.equals(action) ||
+            Intent.ACTION_TIMEZONE_CHANGED.equals(action) ||
+            Intent.ACTION_DATE_CHANGED.equals(action)) {
             rescheduleAllClockAlarms(context);
             rescheduleAllTaskAlarms(context);
             rescheduleAllCalendarReminders(context);
