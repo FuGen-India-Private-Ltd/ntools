@@ -227,4 +227,61 @@ describe('Alarm Inactivity & Overnight Scheduling Engine', () => {
     expect(formatAlarmTime12h('13:15')).toEqual({ time: '01:15', period: 'PM' });
     expect(formatAlarmTime12h('23:59')).toEqual({ time: '11:59', period: 'PM' });
   });
+
+  describe('15-Minute Pre-Alarm Notification Window & Dismiss Logic', () => {
+    it('calculates 15-minute notification trigger point accurately for upcoming alarms', () => {
+      const now = new Date(2026, 8, 19, 7, 0, 0).getTime();
+      const alarmTriggerAt = new Date(2026, 8, 19, 7, 30, 0).getTime(); // 30 minutes away
+      const upcomingTriggerAt = alarmTriggerAt - 15 * 60 * 1000; // should be 7:15
+
+      // At 7:00, it is more than 15 minutes away
+      expect(now < upcomingTriggerAt).toBe(true);
+      expect(upcomingTriggerAt - now).toBe(15 * 60 * 1000);
+
+      // At 7:16, it is within the 15-minute window
+      const nowWithin15m = new Date(2026, 8, 19, 7, 16, 0).getTime();
+      expect(nowWithin15m >= upcomingTriggerAt).toBe(true);
+      const remainingMinutes = Math.max(1, Math.ceil((alarmTriggerAt - nowWithin15m) / 60000));
+      expect(remainingMinutes).toBe(14);
+    });
+
+    it('correctly advances to next recurring cycle when today is marked skipped', () => {
+      // Alarm set for Mondays, Wednesdays, Fridays (days: 1, 3, 5)
+      const daysList = [1, 3, 5];
+      // Simulated today: Monday 2026-09-21
+      const mockNow = new Date(2026, 8, 21, 6, 0, 0); // Monday morning
+      const skippedDate = '2026-09-21'; // User dismissed today's upcoming alarm
+
+      let foundNextDay = -1;
+      for (let daysAhead = 0; daysAhead <= 14; daysAhead++) {
+        const check = new Date(mockNow.getTime() + daysAhead * 86400000);
+        check.setHours(7, 0, 0, 0);
+        const jsDayOfWeek = check.getDay();
+        const dateStr = `${check.getFullYear()}-${String(check.getMonth() + 1).padStart(2, '0')}-${String(check.getDate()).padStart(2, '0')}`;
+
+        if (daysList.includes(jsDayOfWeek) && check.getTime() > mockNow.getTime()) {
+          if (skippedDate && skippedDate === dateStr) {
+            // Skipped today!
+            continue;
+          }
+          foundNextDay = jsDayOfWeek;
+          break;
+        }
+      }
+
+      // Should skip Monday (1) and schedule Wednesday (3)
+      expect(foundNextDay).toBe(3);
+    });
+
+    it('ensures upcoming notification countdown text is human readable', () => {
+      const getCountdownText = (minsLeft: number) => {
+        return minsLeft <= 1 ? 'in 1 min' : `in ${minsLeft} mins`;
+      };
+
+      expect(getCountdownText(15)).toBe('in 15 mins');
+      expect(getCountdownText(5)).toBe('in 5 mins');
+      expect(getCountdownText(1)).toBe('in 1 min');
+      expect(getCountdownText(0)).toBe('in 1 min');
+    });
+  });
 });

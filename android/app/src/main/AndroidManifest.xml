@@ -256,6 +256,7 @@
                 <action android:name="com.unicodeascii.converter.ACTION_DISMISS_ALARM" />
                 <action android:name="com.unicodeascii.converter.ACTION_SNOOZE_ALARM" />
                 <action android:name="com.unicodeascii.converter.ACTION_DISMISS_UPCOMING" />
+                <action android:name="com.unicodeascii.converter.ACTION_SHOW_UPCOMING" />
             </intent-filter>
         </receiver>
 

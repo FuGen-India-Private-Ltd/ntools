@@ -287,6 +287,9 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         if (alarmManager == null) return;
 
         Intent intent = new Intent(this, AlarmReceiver.class);
+        intent.setAction(AlarmReceiver.ACTION_ALARM_TRIGGER);
+        intent.setData(android.net.Uri.parse("ntools://alarm/snooze/" + alarmId));
+        intent.setPackage(getPackageName());
         intent.putExtra("alarmId", alarmId);
         intent.putExtra("alarmLabel", alarmLabel + " (Snoozed)");
         intent.putExtra("alarmTime", alarmTime);

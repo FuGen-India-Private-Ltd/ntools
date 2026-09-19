@@ -76,6 +76,7 @@ public class BootReceiver extends BroadcastReceiver {
                             Intent cancelIntent = new Intent(context, AlarmReceiver.class);
                             cancelIntent.setAction(AlarmReceiver.ACTION_ALARM_TRIGGER);
                             cancelIntent.setData(Uri.parse("ntools://alarm/" + id));
+                            cancelIntent.setPackage(context.getPackageName());
                             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
                             PendingIntent cancelPI = PendingIntent.getBroadcast(context, Math.abs(id.hashCode()), cancelIntent, flags);
@@ -107,6 +108,9 @@ public class BootReceiver extends BroadcastReceiver {
                         targetCal.set(Calendar.SECOND, 0);
                         targetCal.set(Calendar.MILLISECOND, 0);
 
+                        String skippedDate = prefs.getString(id + "_skipped_date", "");
+                        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+
                         if (daysList.isEmpty()) {
                             // If time has passed today (<= now), schedule for tomorrow
                             if (targetCal.getTimeInMillis() <= now) {
@@ -114,7 +118,7 @@ public class BootReceiver extends BroadcastReceiver {
                             }
                         } else {
                             boolean found = false;
-                            for (int daysAhead = 0; daysAhead <= 7; daysAhead++) {
+                            for (int daysAhead = 0; daysAhead <= 14; daysAhead++) {
                                 Calendar checkCal = Calendar.getInstance();
                                 checkCal.setTimeInMillis(now);
                                 checkCal.add(Calendar.DAY_OF_YEAR, daysAhead);
@@ -125,6 +129,11 @@ public class BootReceiver extends BroadcastReceiver {
 
                                 int jsDayOfWeek = checkCal.get(Calendar.DAY_OF_WEEK) - 1;
                                 if (daysList.contains(jsDayOfWeek) && checkCal.getTimeInMillis() > now) {
+                                    String targetDateStr = sdfDate.format(checkCal.getTime());
+                                    if (!skippedDate.isEmpty() && skippedDate.equals(targetDateStr)) {
+                                        // User dismissed upcoming occurrence for this day early -> advance to next
+                                        continue;
+                                    }
                                     targetCal = checkCal;
                                     found = true;
                                     break;
@@ -144,6 +153,7 @@ public class BootReceiver extends BroadcastReceiver {
                         Intent alarmIntent = new Intent(context, AlarmReceiver.class);
                         alarmIntent.setAction(AlarmReceiver.ACTION_ALARM_TRIGGER);
                         alarmIntent.setData(Uri.parse("ntools://alarm/" + id));
+                        alarmIntent.setPackage(context.getPackageName());
                         alarmIntent.putExtra("alarmId", id);
                         alarmIntent.putExtra("alarmTime", time);
                         alarmIntent.putExtra("alarmLabel", label);
@@ -210,6 +220,7 @@ public class BootReceiver extends BroadcastReceiver {
                                 Intent cancelIntent = new Intent(context, AlarmReceiver.class);
                                 cancelIntent.setAction(AlarmReceiver.ACTION_ALARM_TRIGGER);
                                 cancelIntent.setData(Uri.parse("ntools://alarm/" + oldId));
+                                cancelIntent.setPackage(context.getPackageName());
                                 int flags = PendingIntent.FLAG_UPDATE_CURRENT;
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
                                 PendingIntent cancelPI = PendingIntent.getBroadcast(context, Math.abs(oldId.hashCode()), cancelIntent, flags);
@@ -226,11 +237,21 @@ public class BootReceiver extends BroadcastReceiver {
                 prefs.edit().putString("active_scheduled_alarm_ids", sb.toString()).commit();
             } catch (Exception ignored) {}
 
-            // 2. Update or clear the persistent Upcoming Alarm notification in status bar
+            // 2. Manage 15-minute Pre-Alarm notification
             if (hasActiveAlarm && earliestTriggerAt != Long.MAX_VALUE) {
-                updateUpcomingAlarmNotification(context, earliestTriggerAt, earliestTime, earliestLabel, earliestId);
+                long upcomingTriggerAt = earliestTriggerAt - (15 * 60 * 1000L);
+                if (now >= upcomingTriggerAt) {
+                    // Within 15 minutes of earliest alarm -> show notification now
+                    updateUpcomingAlarmNotification(context, earliestTriggerAt, earliestTime, earliestLabel, earliestId);
+                    cancelUpcomingScheduleBroadcast(context);
+                } else {
+                    // More than 15 minutes away -> dismiss notification now, and schedule exact broadcast at upcomingTriggerAt
+                    cancelUpcomingAlarmNotification(context);
+                    scheduleUpcomingNotification(context, upcomingTriggerAt, earliestTriggerAt, earliestTime, earliestLabel, earliestId);
+                }
             } else {
                 cancelUpcomingAlarmNotification(context);
+                cancelUpcomingScheduleBroadcast(context);
             }
         } catch (Exception ignored) {}
     }
@@ -244,9 +265,9 @@ public class BootReceiver extends BroadcastReceiver {
                 NotificationChannel channel = new NotificationChannel(
                     UPCOMING_ALARM_CHANNEL_ID,
                     "Upcoming Alarms",
-                    NotificationManager.IMPORTANCE_LOW
+                    NotificationManager.IMPORTANCE_DEFAULT
                 );
-                channel.setDescription("Shows active scheduled alarm in the status bar");
+                channel.setDescription("Shows 15-minute upcoming alarm alerts with dismiss action");
                 channel.setShowBadge(true);
                 channel.setSound(null, null);
                 channel.enableVibration(false);
@@ -255,26 +276,13 @@ public class BootReceiver extends BroadcastReceiver {
 
             Calendar targetCal = Calendar.getInstance();
             targetCal.setTimeInMillis(triggerAt);
-            Calendar nowCal = Calendar.getInstance();
-
-            String dayText;
-            if (targetCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
-                targetCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)) {
-                dayText = "Today";
-            } else {
-                Calendar tomorrowCal = Calendar.getInstance();
-                tomorrowCal.add(Calendar.DAY_OF_YEAR, 1);
-                if (targetCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
-                    targetCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)) {
-                    dayText = "Tomorrow";
-                } else {
-                    SimpleDateFormat dayFormat = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
-                    dayText = dayFormat.format(targetCal.getTime());
-                }
-            }
 
             SimpleDateFormat format12h = new SimpleDateFormat("hh:mm a", Locale.getDefault());
             String displayTime = format12h.format(targetCal.getTime());
+
+            long diffMs = triggerAt - System.currentTimeMillis();
+            long minsLeft = Math.max(1, (diffMs + 59999L) / 60000L);
+            String countdownText = minsLeft <= 1 ? "in 1 min" : "in " + minsLeft + " mins";
 
             Intent openIntent = new Intent(context, MainActivity.class);
             openIntent.putExtra("route", "clock");
@@ -285,25 +293,29 @@ public class BootReceiver extends BroadcastReceiver {
 
             Intent dismissIntent = new Intent(context, AlarmReceiver.class);
             dismissIntent.setAction(AlarmReceiver.ACTION_DISMISS_UPCOMING);
+            dismissIntent.setData(Uri.parse("ntools://alarm/dismiss_upcoming/" + alarmId));
+            dismissIntent.setPackage(context.getPackageName());
             dismissIntent.putExtra("alarmId", alarmId);
+            dismissIntent.putExtra("triggerAt", triggerAt);
             PendingIntent dismissPI = PendingIntent.getBroadcast(context, 90012, dismissIntent, flags);
 
-            String alarmTitle = (label != null && !label.trim().isEmpty() && !label.equalsIgnoreCase("Alarm"))
-                ? "⏰ " + displayTime + " • " + label.trim()
-                : "⏰ Next Alarm • " + displayTime;
+            boolean hasLabel = (label != null && !label.trim().isEmpty() && !label.equalsIgnoreCase("Alarm"));
+            String alarmTitle = hasLabel
+                ? "⏰ Upcoming Alarm • " + displayTime + " (" + label.trim() + ")"
+                : "⏰ Upcoming Alarm • " + displayTime;
 
-            String alarmSubtext = "Scheduled for " + dayText + " • Tap to open";
+            String alarmSubtext = "Rings " + countdownText + " • Tap 'Turn Off' to dismiss";
 
             NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(context, UPCOMING_ALARM_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_stat_alarm)
                     .setContentTitle(alarmTitle)
                     .setContentText(alarmSubtext)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                    .setOngoing(true)
-                    .setAutoCancel(false)
+                    .setOngoing(false)
+                    .setAutoCancel(true)
                     .setContentIntent(openPI)
                     .addAction(R.drawable.ic_stat_alarm, "Turn Off", dismissPI)
                     .addAction(R.drawable.ic_stat_alarm, "Open Clock", openPI);
@@ -312,6 +324,53 @@ public class BootReceiver extends BroadcastReceiver {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public static void scheduleUpcomingNotification(Context context, long showAt, long triggerAt, String timeStr, String label, String alarmId) {
+        try {
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            if (alarmManager == null) return;
+
+            Intent intent = new Intent(context, AlarmReceiver.class);
+            intent.setAction(AlarmReceiver.ACTION_SHOW_UPCOMING);
+            intent.setData(Uri.parse("ntools://alarm_upcoming/single"));
+            intent.setPackage(context.getPackageName());
+            intent.putExtra("alarmId", alarmId);
+            intent.putExtra("alarmTime", timeStr);
+            intent.putExtra("alarmLabel", label);
+            intent.putExtra("triggerAt", triggerAt);
+
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+
+            PendingIntent pi = PendingIntent.getBroadcast(context, AlarmReceiver.UPCOMING_SCHEDULE_REQUEST_CODE, intent, flags);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, showAt, pi);
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, showAt, pi);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void cancelUpcomingScheduleBroadcast(Context context) {
+        try {
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            if (alarmManager == null) return;
+
+            Intent intent = new Intent(context, AlarmReceiver.class);
+            intent.setAction(AlarmReceiver.ACTION_SHOW_UPCOMING);
+            intent.setData(Uri.parse("ntools://alarm_upcoming/single"));
+            intent.setPackage(context.getPackageName());
+
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+
+            PendingIntent pi = PendingIntent.getBroadcast(context, AlarmReceiver.UPCOMING_SCHEDULE_REQUEST_CODE, intent, flags);
+            alarmManager.cancel(pi);
+        } catch (Exception ignored) {}
     }
 
     public static void cancelUpcomingAlarmNotification(Context context) {

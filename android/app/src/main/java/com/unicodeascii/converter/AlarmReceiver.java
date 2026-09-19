@@ -19,10 +19,15 @@ public class AlarmReceiver extends BroadcastReceiver {
     public static final String ACTION_DISMISS_ALARM = "com.unicodeascii.converter.ACTION_DISMISS_ALARM";
     public static final String ACTION_SNOOZE_ALARM = "com.unicodeascii.converter.ACTION_SNOOZE_ALARM";
     public static final String ACTION_DISMISS_UPCOMING = "com.unicodeascii.converter.ACTION_DISMISS_UPCOMING";
+    public static final String ACTION_SHOW_UPCOMING = "com.unicodeascii.converter.ACTION_SHOW_UPCOMING";
+    public static final int UPCOMING_SCHEDULE_REQUEST_CODE = 90020;
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        if (intent == null) return;
         String action = intent.getAction();
+        if (action == null) return;
+
         String alarmId = intent.getStringExtra("alarmId");
         String alarmLabel = intent.getStringExtra("alarmLabel");
         String alarmTime = intent.getStringExtra("alarmTime");
@@ -32,25 +37,35 @@ public class AlarmReceiver extends BroadcastReceiver {
             alarmLabel = "Alarm";
         }
 
-        // Case A: User Tapped "Turn Off" on Upcoming Alarm in Status Bar
-        if (ACTION_DISMISS_UPCOMING.equals(action)) {
-            handleDismissUpcomingAlarm(context, alarmId);
+        // Case 1: Trigger 15-minute Pre-Alarm Warning Notification
+        if (ACTION_SHOW_UPCOMING.equals(action)) {
+            long triggerAt = intent.getLongExtra("triggerAt", 0L);
+            if (triggerAt > System.currentTimeMillis()) {
+                BootReceiver.updateUpcomingAlarmNotification(context, triggerAt, alarmTime, alarmLabel, alarmId);
+            }
             return;
         }
 
-        // Case B: User Tapped "Turn Off / Dismiss" on Ringing Notification or Overlay
+        // Case 2: User Tapped "Turn Off" / "Dismiss Now" on 15-minute Upcoming Alarm Notification
+        if (ACTION_DISMISS_UPCOMING.equals(action)) {
+            long triggerAt = intent.getLongExtra("triggerAt", 0L);
+            handleDismissUpcomingAlarm(context, alarmId, triggerAt);
+            return;
+        }
+
+        // Case 3: User Tapped "Turn Off / Dismiss" on Ringing Notification or Overlay
         if (ACTION_DISMISS_ALARM.equals(action)) {
             handleDismissRingingAlarm(context, alarmId);
             return;
         }
 
-        // Case C: User Tapped "Snooze" (10m) on Notification or Overlay
+        // Case 4: User Tapped "Snooze" (10m) on Notification or Overlay
         if (ACTION_SNOOZE_ALARM.equals(action)) {
             handleSnoozeRingingAlarm(context, alarmId, alarmLabel, alarmTime, alarmSound);
             return;
         }
 
-        // Case D: Actual Alarm Rings -> Start Foreground AlarmService
+        // Case 5: Actual Alarm Rings -> Start Foreground AlarmService
         handleActualAlarmTrigger(context, alarmId, alarmLabel, alarmTime, alarmSound);
     }
 
@@ -76,13 +91,55 @@ public class AlarmReceiver extends BroadcastReceiver {
         AlarmService.startAlarm(context, alarmId, alarmLabel, alarmTime, alarmSound);
     }
 
-    private void handleDismissUpcomingAlarm(Context context, String alarmId) {
+    private void handleDismissUpcomingAlarm(Context context, String alarmId, long triggerAt) {
         try {
-            if (alarmId != null && !alarmId.isEmpty()) {
-                disableOneTimeAlarm(context, alarmId);
+            // 1. Immediately cancel the upcoming notification
+            BootReceiver.cancelUpcomingAlarmNotification(context);
+
+            // 2. Cancel today's exact AlarmManager trigger so the alarm DOES NOT sound at target time
+            AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            if (am != null && alarmId != null) {
+                Intent cancelIntent = new Intent(context, AlarmReceiver.class);
+                cancelIntent.setAction(AlarmReceiver.ACTION_ALARM_TRIGGER);
+                cancelIntent.setData(android.net.Uri.parse("ntools://alarm/" + alarmId));
+                cancelIntent.setPackage(context.getPackageName());
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+                PendingIntent cancelPI = PendingIntent.getBroadcast(context, Math.abs(alarmId.hashCode()), cancelIntent, flags);
+                am.cancel(cancelPI);
             }
+
+            // 3. Mark today skipped for recurring alarms, or disable one-time alarms
+            if (alarmId != null && !alarmId.isEmpty()) {
+                SharedPreferences prefs = context.getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);
+                String alarmsJsonStr = prefs.getString(AppWidgetSyncPlugin.KEY_ALARMS, "[]");
+                JSONArray arr = new JSONArray(alarmsJsonStr);
+                boolean isOneTime = true;
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject obj = arr.getJSONObject(i);
+                    if (alarmId.equals(obj.optString("id"))) {
+                        JSONArray daysArr = obj.optJSONArray("days");
+                        if (daysArr != null && daysArr.length() > 0) {
+                            isOneTime = false;
+                        }
+                        break;
+                    }
+                }
+
+                if (isOneTime) {
+                    disableOneTimeAlarm(context, alarmId);
+                } else {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+                    String targetDateStr = (triggerAt > 0) ? sdf.format(new java.util.Date(triggerAt)) : sdf.format(new java.util.Date());
+                    prefs.edit().putString(alarmId + "_skipped_date", targetDateStr).commit();
+                }
+            }
+
+            // 4. Auto-reschedule so future occurrences are scheduled
             BootReceiver.rescheduleAllClockAlarms(context);
-            Toast.makeText(context, "Upcoming alarm turned off", Toast.LENGTH_SHORT).show();
+
+            MainActivity.dispatchJsEvent("alarms-updated");
+            Toast.makeText(context, "Upcoming alarm dismissed", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -90,21 +147,26 @@ public class AlarmReceiver extends BroadcastReceiver {
 
     private void handleDismissRingingAlarm(Context context, String alarmId) {
         try {
-            // Stop foreground service audio and vibration
+            // 1. Stop foreground service audio and vibration
             AlarmService.stopAlarm(context);
             AlarmAlertOverlayActivity.dismissActiveOverlay();
 
+            // 2. Cancel ringing notification (1001) and any fallback IDs
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm != null && alarmId != null) {
-                nm.cancel(alarmId.hashCode());
+            if (nm != null) {
+                nm.cancel(AlarmService.NOTIFICATION_ID);
+                if (alarmId != null) {
+                    nm.cancel(Math.abs(alarmId.hashCode()));
+                }
             }
 
-            // If one-time alarm (no repeating days), disable it in saved preferences
+            // 3. If one-time alarm (no repeating days), disable it in saved preferences
             disableOneTimeAlarm(context, alarmId);
 
-            // Auto-reschedule recurring alarms for next cycle
+            // 4. Auto-reschedule recurring alarms for next cycle
             BootReceiver.rescheduleAllClockAlarms(context);
 
+            MainActivity.dispatchJsEvent("alarms-updated");
             Toast.makeText(context, "Alarm turned off", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             e.printStackTrace();
@@ -113,13 +175,17 @@ public class AlarmReceiver extends BroadcastReceiver {
 
     private void handleSnoozeRingingAlarm(Context context, String alarmId, String alarmLabel, String alarmTime, String alarmSound) {
         try {
-            // Stop current ringing
+            // 1. Stop current ringing
             AlarmService.stopAlarm(context);
             AlarmAlertOverlayActivity.dismissActiveOverlay();
 
+            // 2. Cancel ringing notification (1001)
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm != null && alarmId != null) {
-                nm.cancel(alarmId.hashCode());
+            if (nm != null) {
+                nm.cancel(AlarmService.NOTIFICATION_ID);
+                if (alarmId != null) {
+                    nm.cancel(Math.abs(alarmId.hashCode()));
+                }
             }
 
             AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);

@@ -33,6 +33,8 @@ export interface AppWidgetSyncPluginInterface {
     audioRecord: boolean;
     allEssentialGranted: boolean;
   }>;
+  checkNotificationPermission(): Promise<{ granted: boolean }>;
+  openNotificationSettings(): Promise<{ success: boolean }>;
   requestNotificationPermission(): Promise<{ success: boolean }>;
   requestAudioPermission(): Promise<{ success: boolean }>;
 }
@@ -306,6 +308,28 @@ export async function checkAllStartupPermissionsNative(): Promise<{
   };
 }
 
+export async function checkNotificationPermissionNative(): Promise<boolean> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const res = await AppWidgetSync.checkNotificationPermission();
+      return !!res.granted;
+    }
+  } catch (e) {
+    console.debug('checkNotificationPermission error:', e);
+  }
+  return true;
+}
+
+export async function openNotificationSettingsNative(): Promise<void> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await AppWidgetSync.openNotificationSettings();
+    }
+  } catch (e) {
+    console.debug('openNotificationSettings error:', e);
+  }
+}
+
 export async function requestNotificationPermissionNative(): Promise<{ success: boolean }> {
   try {
     if (Capacitor.isNativePlatform()) {
@@ -329,5 +353,6 @@ export async function requestAudioPermissionNative(): Promise<{ granted: boolean
   }
   return { granted: true };
 }
+
 
 

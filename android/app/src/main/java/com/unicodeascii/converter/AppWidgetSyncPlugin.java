@@ -320,6 +320,61 @@ public class AppWidgetSyncPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void checkNotificationPermission(PluginCall call) {
+        boolean granted = true;
+        Context ctx = getContext();
+        if (ctx != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                granted = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+                granted = (nm != null) && nm.areNotificationsEnabled();
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("granted", granted);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        try {
+            Activity act = getActivity();
+            Context ctx = act != null ? act : getContext();
+            String pkg = ctx != null ? ctx.getPackageName() : "com.unicodeascii.converter";
+            Intent intent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, pkg);
+            } else {
+                intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg));
+            }
+            if (act != null) {
+                act.startActivity(intent);
+            } else if (ctx != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(intent);
+            }
+        } catch (Exception e) {
+            try {
+                Activity act = getActivity();
+                Context ctx = act != null ? act : getContext();
+                String pkg = ctx != null ? ctx.getPackageName() : "com.unicodeascii.converter";
+                Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg));
+                if (act != null) {
+                    act.startActivity(fallback);
+                } else if (ctx != null) {
+                    fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    ctx.startActivity(fallback);
+                }
+            } catch (Exception ignored) {}
+        }
+        JSObject ret = new JSObject();
+        ret.put("success", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void requestNotificationPermission(PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Activity act = getActivity();

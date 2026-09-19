@@ -32,9 +32,10 @@ import {
   testAlarmPopupNative,
   requestBatteryOptimizationExemptionNative,
   checkBatteryOptimizationExemptNative,
-  openAppDetailsSettingsNative,
   checkAllStartupPermissionsNative,
+  checkNotificationPermissionNative,
   requestNotificationPermissionNative,
+  openNotificationSettingsNative,
 } from '../lib/widgetSyncBridge';
 import {
   Clock as ClockIcon,
@@ -103,6 +104,7 @@ export function ClockSuiteTab() {
   const [overlayGranted, setOverlayGranted] = useState<boolean>(true);
   const [exactAlarmGranted, setExactAlarmGranted] = useState<boolean>(true);
   const [batteryExempt, setBatteryExempt] = useState<boolean>(true);
+  const [notificationGranted, setNotificationGranted] = useState<boolean>(true);
   const [testingPopup, setTestingPopup] = useState(false);
 
   useEffect(() => {
@@ -121,9 +123,11 @@ export function ClockSuiteTab() {
     const overlay = await checkOverlayPermissionNative();
     const exact = await checkExactAlarmPermissionNative();
     const exempt = await checkBatteryOptimizationExemptNative();
+    const notif = await checkNotificationPermissionNative();
     setOverlayGranted(overlay);
     setExactAlarmGranted(exact);
     setBatteryExempt(exempt);
+    setNotificationGranted(notif);
   };
 
   useEffect(() => {
@@ -942,6 +946,46 @@ export function ClockSuiteTab() {
                   className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold transition active:scale-95 shadow-sm cursor-pointer"
                 >
                   Allow Unrestricted
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Notification Permission Banner for 15m Pre-Alarm & Lockscreen Controls */}
+          {Capacitor.isNativePlatform() && !notificationGranted && (
+            <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 rounded-xl bg-blue-500/20 text-blue-500 shrink-0 mt-0.5">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                    Enable Notification Warnings &amp; Controls
+                  </h4>
+                  <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 leading-tight mt-0.5">
+                    Allow notifications to receive 15-minute pre-alarm heads-up warnings and dismiss or snooze alarms directly from your lockscreen and notification bar.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await requestNotificationPermissionNative();
+                    setTimeout(refreshPermissions, 1200);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-bold transition active:scale-95 shadow-sm cursor-pointer"
+                >
+                  Enable
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await openNotificationSettingsNative();
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition active:scale-95 border border-black/10 dark:border-white/10 cursor-pointer"
+                >
+                  Settings
                 </button>
               </div>
             </div>

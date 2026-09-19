@@ -34,6 +34,7 @@ public class AlarmService extends Service {
     public static final String ALARM_CHANNEL_ID = "ntools_ringing_alarms";
     public static final int NOTIFICATION_ID = 1001;
 
+    public static AlarmService instance = null;
     private static boolean isAlarmRinging = false;
 
     private MediaPlayer mediaPlayer = null;
@@ -49,6 +50,12 @@ public class AlarmService extends Service {
 
     public static boolean isRinging() {
         return isAlarmRinging;
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        instance = this;
     }
 
     public static void startAlarm(Context context, String alarmId, String alarmLabel, String alarmTime, String alarmSound) {
@@ -72,12 +79,16 @@ public class AlarmService extends Service {
 
     public static void stopAlarm(Context context) {
         try {
-            Intent serviceIntent = new Intent(context, AlarmService.class);
-            serviceIntent.setAction(ACTION_STOP_ALARM);
-            context.startService(serviceIntent);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            if (instance != null) {
+                instance.stopAlarmExecution();
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (context != null) {
+                Intent serviceIntent = new Intent(context, AlarmService.class);
+                context.stopService(serviceIntent);
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -156,11 +167,15 @@ public class AlarmService extends Service {
         // 4. Prepare Notification Action PendingIntents (Dismiss and Snooze)
         Intent dismissIntent = new Intent(this, AlarmReceiver.class);
         dismissIntent.setAction(AlarmReceiver.ACTION_DISMISS_ALARM);
+        dismissIntent.setData(Uri.parse("ntools://alarm/dismiss/" + currentAlarmId));
+        dismissIntent.setPackage(getPackageName());
         dismissIntent.putExtra("alarmId", currentAlarmId);
         PendingIntent dismissPI = PendingIntent.getBroadcast(this, NOTIFICATION_ID + 10, dismissIntent, piFlags);
 
         Intent snoozeIntent = new Intent(this, AlarmReceiver.class);
         snoozeIntent.setAction(AlarmReceiver.ACTION_SNOOZE_ALARM);
+        snoozeIntent.setData(Uri.parse("ntools://alarm/snooze/" + currentAlarmId));
+        snoozeIntent.setPackage(getPackageName());
         snoozeIntent.putExtra("alarmId", currentAlarmId);
         snoozeIntent.putExtra("alarmLabel", currentAlarmLabel);
         snoozeIntent.putExtra("alarmTime", currentAlarmTime);
@@ -376,6 +391,7 @@ public class AlarmService extends Service {
     @Override
     public void onDestroy() {
         stopAlarmExecution();
+        instance = null;
         super.onDestroy();
     }
 }
