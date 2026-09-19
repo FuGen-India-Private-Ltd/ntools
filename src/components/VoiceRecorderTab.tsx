@@ -50,28 +50,28 @@ export const RECORDING_CATEGORIES: Record<
 > = {
   note: {
     label: 'Voice Note',
-    badge: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
-    dot: 'bg-rose-500',
+    badge: 'bg-black/5 dark:bg-white/10 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/15',
+    dot: 'bg-slate-400 dark:bg-slate-400',
   },
   meeting: {
     label: 'Meeting',
-    badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
-    dot: 'bg-blue-500',
+    badge: 'bg-black/5 dark:bg-white/10 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/15',
+    dot: 'bg-slate-400 dark:bg-slate-400',
   },
   lecture: {
     label: 'Lecture',
-    badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
-    dot: 'bg-amber-500',
+    badge: 'bg-black/5 dark:bg-white/10 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/15',
+    dot: 'bg-slate-400 dark:bg-slate-400',
   },
   idea: {
     label: 'Idea',
-    badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-    dot: 'bg-emerald-500',
+    badge: 'bg-black/5 dark:bg-white/10 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/15',
+    dot: 'bg-slate-400 dark:bg-slate-400',
   },
   interview: {
     label: 'Interview',
-    badge: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
-    dot: 'bg-purple-500',
+    badge: 'bg-black/5 dark:bg-white/10 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/15',
+    dot: 'bg-slate-400 dark:bg-slate-400',
   },
 };
 
@@ -124,6 +124,7 @@ export function VoiceRecorderTab() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const idleAnimRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timerIntervalRef = useRef<any>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -190,50 +191,76 @@ export function VoiceRecorderTab() {
     }
   };
 
-  // Idle studio oscilloscope graph renderer
+  // Idle studio oscilloscope graph renderer - continuously animated so the bar is never empty!
   const startIdleVisualizer = () => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (idleAnimRef.current) cancelAnimationFrame(idleAnimRef.current);
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
-    }
-
-    const width = canvas.width;
-    const height = canvas.height;
-    const centerY = height / 2;
-    ctx.clearRect(0, 0, width, height);
-
-    // Center reference line
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
-    ctx.fillRect(0, centerY - 0.5 * dpr, width, 1 * dpr);
-
-    // Resting studio sound-level baseline markers across the deck
-    const numBars = 44;
-    const barWidth = Math.max(3, width / numBars - 3 * dpr);
-    for (let i = 0; i < numBars; i++) {
-      const x = i * (barWidth + 3 * dpr);
-      const halfHeight = (2 + Math.sin(i * 0.45) * 1.5) * dpr;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
-      if (ctx.roundRect) {
-        ctx.beginPath();
-        ctx.roundRect(x, centerY - halfHeight, barWidth, halfHeight * 2, [barWidth / 2]);
-        ctx.fill();
-      } else {
-        ctx.fillRect(x, centerY - halfHeight, barWidth, halfHeight * 2);
+    let offset = 0;
+    const renderIdle = () => {
+      offset += 0.04;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0 && (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr))) {
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
       }
-    }
+
+      const width = canvas.width;
+      const height = canvas.height;
+      if (width === 0 || height === 0) {
+        idleAnimRef.current = requestAnimationFrame(renderIdle);
+        return;
+      }
+      const centerY = height / 2;
+      ctx.clearRect(0, 0, width, height);
+
+      // Subtle center datum line
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+      ctx.fillRect(0, centerY - 0.5 * dpr, width, 1 * dpr);
+
+      // Resting studio audio wave graph across the bar
+      const numBars = 44;
+      const barWidth = Math.max(3, (width / numBars) - 2.5 * dpr);
+      for (let i = 0; i < numBars; i++) {
+        const x = i * (barWidth + 2.5 * dpr);
+        const wave = Math.sin(offset + i * 0.22) * 0.5 + Math.cos(offset * 0.7 + i * 0.15) * 0.5;
+        const halfHeight = Math.max(2 * dpr, (3 + Math.abs(wave) * 6) * dpr);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(x, centerY - halfHeight, barWidth, halfHeight * 2, [barWidth / 2]);
+          ctx.fill();
+        } else {
+          ctx.fillRect(x, centerY - halfHeight, barWidth, halfHeight * 2);
+        }
+      }
+
+      // Smooth central wave thread
+      ctx.beginPath();
+      for (let i = 0; i < width; i += 4) {
+        const y = centerY + Math.sin(offset + (i / width) * 8) * (4 * dpr);
+        if (i === 0) ctx.moveTo(i, y);
+        else ctx.lineTo(i, y);
+      }
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 1 * dpr;
+      ctx.stroke();
+
+      idleAnimRef.current = requestAnimationFrame(renderIdle);
+    };
+
+    renderIdle();
   };
 
   // High-DPI Live Visualizer Loop for active recording
   const startVisualizer = () => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (idleAnimRef.current) cancelAnimationFrame(idleAnimRef.current);
     if (!canvasRef.current || !analyserRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -245,20 +272,21 @@ export function VoiceRecorderTab() {
     const freqArray = new Uint8Array(bufferLength);
     const timeArray = new Uint8Array(analyser.fftSize);
 
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
-    }
-
     const render = () => {
       animationFrameRef.current = requestAnimationFrame(render);
       analyser.getByteFrequencyData(freqArray);
       analyser.getByteTimeDomainData(timeArray);
 
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0 && (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr))) {
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
+      }
+
       const width = canvas.width;
       const height = canvas.height;
+      if (width === 0 || height === 0) return;
       const centerY = height / 2;
       ctx.clearRect(0, 0, width, height);
 
@@ -343,6 +371,9 @@ export function VoiceRecorderTab() {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      if (idleAnimRef.current) {
+        cancelAnimationFrame(idleAnimRef.current);
+      }
     };
   }, [isRecording, isPaused]);
 
@@ -392,6 +423,9 @@ export function VoiceRecorderTab() {
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
       audioContextRef.current = audioCtx;
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
@@ -739,23 +773,23 @@ export function VoiceRecorderTab() {
       <div className="p-6 sm:p-8 rounded-3xl bg-[#0d0f14] dark:bg-[#090a0e] border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-6 select-none">
         {/* Status Pill */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300 shadow-sm">
             {isRecording ? (
               isPaused ? (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span className="text-amber-400 font-bold tracking-wide">PAUSED</span>
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  <span className="text-slate-300 font-mono font-bold tracking-wider uppercase text-[11px]">PAUSED</span>
                 </>
               ) : (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span className="text-rose-400 font-bold tracking-wider">● REC</span>
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  <span className="text-white font-mono font-bold tracking-widest uppercase text-[11px]">RECORDING</span>
                 </>
               )
             ) : (
               <>
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                <span className="text-slate-400">Studio Ready</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                <span className="text-slate-400 text-[11px] font-medium">Ready • Studio 48kHz</span>
               </>
             )}
           </div>
@@ -782,36 +816,43 @@ export function VoiceRecorderTab() {
               <button
                 type="button"
                 onClick={startRecording}
-                className="w-20 h-20 rounded-full bg-[#161822] hover:bg-[#1d202d] border-2 border-white/15 hover:border-white/30 text-white flex items-center justify-center shadow-2xl active:scale-95 transition-all cursor-pointer group"
+                className="px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-white flex items-center gap-3 shadow-xl active:scale-95 transition-all cursor-pointer group"
                 title="Start Recording"
               >
-                {/* Classic studio red record dot */}
-                <div className="w-8 h-8 rounded-full bg-rose-600 group-hover:bg-rose-500 transition-all shadow-md" />
+                <Mic className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-black tracking-wider uppercase">Start Recording</span>
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-center gap-6">
+            <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
               {/* Cancel / Discard */}
               <button
                 type="button"
                 onClick={cancelRecording}
-                className="w-12 h-12 rounded-full bg-white/5 hover:bg-rose-500/15 border border-white/10 text-slate-400 hover:text-rose-400 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-sm"
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-xs flex items-center gap-2 active:scale-95 transition cursor-pointer shadow-sm"
                 title="Discard Recording"
               >
                 <Trash2 className="w-4 h-4" />
+                <span>Discard</span>
               </button>
 
               {/* Pause / Resume */}
               <button
                 type="button"
                 onClick={isPaused ? resumeRecording : pauseRecording}
-                className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md"
+                className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-xs flex items-center gap-2 active:scale-95 transition cursor-pointer shadow-md"
                 title={isPaused ? 'Resume' : 'Pause'}
               >
                 {isPaused ? (
-                  <Play className="w-6 h-6 fill-current ml-0.5" />
+                  <>
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                    <span>Resume</span>
+                  </>
                 ) : (
-                  <Pause className="w-6 h-6" />
+                  <>
+                    <Pause className="w-4 h-4" />
+                    <span>Pause</span>
+                  </>
                 )}
               </button>
 
@@ -819,11 +860,11 @@ export function VoiceRecorderTab() {
               <button
                 type="button"
                 onClick={stopRecording}
-                className="w-16 h-16 rounded-full bg-[#161822] hover:bg-[#1d202d] border-2 border-white/20 text-white flex items-center justify-center shadow-xl active:scale-95 transition cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-black text-xs flex items-center gap-2 active:scale-95 transition shadow-lg cursor-pointer"
                 title="Finish & Save"
               >
-                {/* Classic studio square */}
-                <div className="w-5 h-5 rounded bg-rose-600" />
+                <Square className="w-3.5 h-3.5 fill-current" />
+                <span>Finish &amp; Save</span>
               </button>
             </div>
           )}
@@ -868,7 +909,7 @@ export function VoiceRecorderTab() {
                   onClick={() => handleSpeedChange(spd)}
                   className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition active:scale-95 ${
                     playbackSpeed === spd
-                      ? 'bg-rose-500 text-white shadow-sm'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
                       : 'liquid-glass-btn text-slate-600 dark:text-slate-400'
                   }`}
                 >
@@ -961,7 +1002,7 @@ export function VoiceRecorderTab() {
                   key={rec.id}
                   className={`p-4 sm:p-5 rounded-2xl liquid-glass-card liquid-specular border transition-all duration-200 shadow-sm ${
                     isPlaying
-                      ? 'border-rose-500/40 shadow-rose-500/10'
+                      ? 'border-slate-500 dark:border-slate-400 shadow-sm'
                       : 'border-black/5 dark:border-white/10'
                   }`}
                 >
@@ -972,7 +1013,7 @@ export function VoiceRecorderTab() {
                       onClick={() => playRecording(rec)}
                       className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition active:scale-95 cursor-pointer border ${
                         isPlaying
-                          ? 'bg-rose-500 text-white border-rose-400 shadow-rose-500/30'
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent shadow-sm'
                           : 'liquid-glass-btn text-slate-800 dark:text-slate-200 border-black/10 dark:border-white/10'
                       }`}
                       title={isPlaying ? 'Pause' : 'Play'}
@@ -1017,11 +1058,11 @@ export function VoiceRecorderTab() {
                             {rec.name}
                           </h4>
                           {isPlaying && (
-                            <div className="flex items-end gap-0.5 h-3 px-1 py-0.5 rounded-md bg-rose-500/15 border border-rose-500/30 shrink-0">
-                              <div className="w-0.5 bg-rose-500 rounded-full animate-soundbar-1" />
-                              <div className="w-0.5 bg-rose-500 rounded-full animate-soundbar-2" />
-                              <div className="w-0.5 bg-rose-500 rounded-full animate-soundbar-3" />
-                              <div className="w-0.5 bg-rose-500 rounded-full animate-soundbar-4" />
+                            <div className="flex items-end gap-0.5 h-3 px-1 py-0.5 rounded-md bg-slate-900/10 dark:bg-white/10 border border-slate-900/20 dark:border-white/20 shrink-0">
+                              <div className="w-0.5 bg-slate-900 dark:bg-white rounded-full animate-soundbar-1" />
+                              <div className="w-0.5 bg-slate-900 dark:bg-white rounded-full animate-soundbar-2" />
+                              <div className="w-0.5 bg-slate-900 dark:bg-white rounded-full animate-soundbar-3" />
+                              <div className="w-0.5 bg-slate-900 dark:bg-white rounded-full animate-soundbar-4" />
                             </div>
                           )}
                           <button
@@ -1073,7 +1114,7 @@ export function VoiceRecorderTab() {
                       <button
                         type="button"
                         onClick={() => shareRecording(rec)}
-                        className="p-2 rounded-xl liquid-glass-btn text-slate-600 dark:text-slate-300 hover:text-rose-500 active:scale-95 transition cursor-pointer"
+                        className="p-2 rounded-xl liquid-glass-btn text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white active:scale-95 transition cursor-pointer"
                         title="Share Audio"
                       >
                         <Share2 className="w-4 h-4" />
@@ -1081,7 +1122,7 @@ export function VoiceRecorderTab() {
                       <button
                         type="button"
                         onClick={() => downloadToPhoneStorage(rec)}
-                        className="p-2 rounded-xl liquid-glass-btn text-slate-600 dark:text-slate-300 hover:text-rose-500 active:scale-95 transition cursor-pointer"
+                        className="p-2 rounded-xl liquid-glass-btn text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white active:scale-95 transition cursor-pointer"
                         title="Save to Phone (Documents/nTools/Recordings)"
                       >
                         <Download className="w-4 h-4" />
@@ -1089,7 +1130,7 @@ export function VoiceRecorderTab() {
                       <button
                         type="button"
                         onClick={() => deleteRecording(rec.id)}
-                        className="p-2 rounded-xl liquid-glass-btn text-slate-400 hover:text-rose-500 active:scale-95 transition cursor-pointer"
+                        className="p-2 rounded-xl liquid-glass-btn text-slate-400 hover:text-slate-900 dark:hover:text-white active:scale-95 transition cursor-pointer"
                         title="Delete Recording"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1107,7 +1148,7 @@ export function VoiceRecorderTab() {
                     >
                       {/* Playback progress backdrop fill */}
                       <div
-                        className="absolute left-0 top-0 bottom-0 bg-rose-500/15 pointer-events-none transition-[width] duration-75"
+                        className="absolute left-0 top-0 bottom-0 bg-slate-900/10 dark:bg-white/10 pointer-events-none transition-[width] duration-75"
                         style={{ width: `${progressPercent}%` }}
                       />
 
@@ -1124,7 +1165,7 @@ export function VoiceRecorderTab() {
                             <div
                               className={`w-full rounded-full transition-colors duration-100 ${
                                 isBarActive
-                                  ? 'bg-rose-500'
+                                  ? 'bg-slate-900 dark:bg-white'
                                   : 'bg-slate-300 dark:bg-slate-600 group-hover:bg-slate-400'
                               }`}
                               style={{
@@ -1138,7 +1179,7 @@ export function VoiceRecorderTab() {
                       {/* Scrub Head Pin */}
                       {isPlaying && (
                         <div
-                          className="absolute top-1 bottom-1 w-1 bg-rose-500 rounded-full shadow-md shadow-rose-500/50 pointer-events-none"
+                          className="absolute top-1 bottom-1 w-1 bg-slate-900 dark:bg-white rounded-full shadow-sm pointer-events-none"
                           style={{ left: `${progressPercent}%` }}
                         />
                       )}

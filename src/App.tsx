@@ -519,10 +519,12 @@ export function App() {
       isInternalNavRef.current = false;
     }, 120);
 
-    // Instant direct tab switch with zero scheduler lag
+    // Instant non-blocking tab switch with zero lag or frame drop
     setSlideDirection(dir);
-    setActiveModule(mod);
-  }, []);
+    startTransition(() => {
+      setActiveModule(mod);
+    });
+  }, [startTransition]);
 
   // --------------------------------------------------------------------------
   // Android Hardware / Gesture Back Navigation & Double-Tap Exit

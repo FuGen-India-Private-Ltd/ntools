@@ -193,7 +193,7 @@ export function CompassTab() {
             {/* Needle */}
             <div className="absolute w-2 h-28 flex flex-col items-center justify-between">
               {/* North Pointer (Red) */}
-              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[40px] border-b-rose-500 filter drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[40px] border-b-rose-500" />
               {/* Center Pivot */}
               <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 border-2 border-rose-500 z-10" />
               {/* South Pointer (White/Silver) */}

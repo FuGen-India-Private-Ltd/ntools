@@ -285,63 +285,7 @@
     0 24px 60px -10px rgba(0, 0, 0, 0.75);
 }
 
-@keyframes recording-pulse-aura {
-  0%, 100% {
-    box-shadow: 0 0 20px 2px rgba(244, 63, 94, 0.30), inset 0 0 15px rgba(244, 63, 94, 0.15);
-    border-color: rgba(244, 63, 94, 0.45);
-  }
-  50% {
-    box-shadow: 0 0 45px 8px rgba(244, 63, 94, 0.55), inset 0 0 25px rgba(244, 63, 94, 0.25);
-    border-color: rgba(244, 63, 94, 0.85);
-  }
-}
-
-.liquid-glass-recording-aura {
-  animation: recording-pulse-aura 2.2s infinite ease-in-out;
-}
-
-/* Animated Multi-Layer Concentric Sound Waves */
-@keyframes concentric-ripple {
-  0% {
-    transform: scale(0.92);
-    opacity: 0.85;
-  }
-  50% {
-    opacity: 0.4;
-  }
-  100% {
-    transform: scale(1.65);
-    opacity: 0;
-  }
-}
-
-.animate-concentric-1 {
-  animation: concentric-ripple 2.4s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-}
-
-.animate-concentric-2 {
-  animation: concentric-ripple 2.4s cubic-bezier(0.25, 1, 0.5, 1) infinite 0.8s;
-}
-
-.animate-concentric-3 {
-  animation: concentric-ripple 2.4s cubic-bezier(0.25, 1, 0.5, 1) infinite 1.6s;
-}
-
-/* Breathing Mic Idle Glow */
-@keyframes mic-breath {
-  0%, 100% {
-    box-shadow: 0 0 16px 3px rgba(244, 63, 94, 0.35), 0 10px 28px -5px rgba(244, 63, 94, 0.45);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 38px 10px rgba(244, 63, 94, 0.65), 0 14px 40px -5px rgba(244, 63, 94, 0.75);
-    transform: scale(1.04);
-  }
-}
-
-.animate-mic-breathe {
-  animation: mic-breath 3s ease-in-out infinite;
-}
+/* Clean Professional Studio Animations */
 
 /* Soundbar Equalizer Dance Animation for Playback */
 @keyframes soundbar-dance-1 {
@@ -369,24 +313,24 @@
 .animate-soundbar-3 { animation: soundbar-dance-3 0.85s ease-in-out infinite 0.3s; }
 .animate-soundbar-4 { animation: soundbar-dance-4 0.70s ease-in-out infinite 0.45s; }
 
-/* Liquid Glass Modern Floating Dock - Dark Obsidian Glass */
+/* Liquid Glass Modern Floating Dock - Dark Obsidian Glass (Pitch Black) */
 .liquid-glass-arc-dock {
   backdrop-filter: blur(40px) saturate(220%);
   -webkit-backdrop-filter: blur(40px) saturate(220%);
-  background: rgba(18, 20, 26, 0.94);
+  background: #000000;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.8),
-    0 24px 64px -6px rgba(0, 0, 0, 0.6);
-}
-
-.dark .liquid-glass-arc-dock {
-  background: rgba(8, 9, 13, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow:
     inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.16),
     inset 0 -1px 2px 0 rgba(0, 0, 0, 0.95),
+    0 24px 64px -6px rgba(0, 0, 0, 0.85);
+}
+
+.dark .liquid-glass-arc-dock {
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.98),
     0 24px 64px -6px rgba(0, 0, 0, 0.98);
 }
 

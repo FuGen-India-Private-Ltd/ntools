@@ -64,9 +64,11 @@ export const CalendarPlannerTab = React.memo(function CalendarPlannerTab() {
     startTransition(() => {
       setSelectedDateStr(dateStr);
     });
-    setTimeout(() => {
-      agendaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 60);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setTimeout(() => {
+        agendaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 40);
+    }
   };
 
   useEffect(() => {
@@ -340,185 +342,264 @@ export const CalendarPlannerTab = React.memo(function CalendarPlannerTab() {
         </div>
       )}
 
-      {/* Month Navigation & Actions Header */}
-      <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-5 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <button
-            type="button"
-            onClick={prevMonth}
-            className="liquid-glass-btn p-2 rounded-xl text-slate-700 dark:text-slate-300 transition active:scale-95 cursor-pointer"
-            aria-label="Previous Month"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 px-1 select-none min-w-[140px] text-center">
-            {monthName}
-          </h2>
-
-          <button
-            type="button"
-            onClick={nextMonth}
-            className="liquid-glass-btn p-2 rounded-xl text-slate-700 dark:text-slate-300 transition active:scale-95 cursor-pointer"
-            aria-label="Next Month"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={todayMonth}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 ml-1 transition cursor-pointer"
-          >
-            Today
-          </button>
-        </div>
-
-        {/* Quick Add Buttons & View Toggle */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => openAddModal('birthday')}
-            className="liquid-glass-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-slate-800 dark:text-slate-200 text-xs font-bold transition active:scale-95 cursor-pointer"
-          >
-            <Cake className="w-4 h-4" />
-            <span>+ Birthday</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => openAddModal('event')}
-            className="liquid-glass-accent inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-black shadow-sm transition active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Event</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Upcoming Event Alert Banner */}
-      {upcoming && (
-        <div className="liquid-glass-card liquid-specular px-4 py-2.5 rounded-2xl flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
-            <Sparkles className="w-4 h-4 text-slate-700 dark:text-slate-300 shrink-0" />
-            <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
-              Upcoming: {upcoming.title}
-            </span>
-          </div>
-          <span className="shrink-0 px-2.5 py-0.5 rounded-full liquid-glass-accent text-[10px] font-bold shadow-sm">
-            {upcoming.daysRemaining === 0 ? 'Today!' : `In ${upcoming.daysRemaining} days (${upcoming.dateFormatted})`}
-          </span>
-        </div>
-      )}
-
-      {/* Month Calendar Grid */}
-      <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-6 space-y-2">
-        {/* Days of Week Header */}
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs font-bold text-slate-400 py-1">
-          <span>Sun</span>
-          <span>Mon</span>
-          <span>Tue</span>
-          <span>Wed</span>
-          <span>Thu</span>
-          <span>Fri</span>
-          <span>Sat</span>
-        </div>
-
-        {/* Days Grid */}
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-          {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-            <div key={`blank-${i}`} className="h-11 sm:h-14 rounded-xl bg-transparent" />
-          ))}
-
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const dayNumber = i + 1;
-            const dateStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}-${dayNumber.toString().padStart(2, '0')}`;
-            const isSelected = dateStr === selectedDateStr;
-            const isToday = dateStr === todayStr;
-
-            const hasBirthdays = birthdayDates.has(dateStr);
-            const hasHoliday = holidayDaysMap.has(dayNumber);
-            const hasAnyItem = activeEventDates.has(dateStr) || activeTaskDates.has(dateStr) || hasHoliday;
-
-            return (
-              <div
-                key={dateStr}
-                onClick={() => handleSelectDate(dateStr)}
-                className={`h-11 sm:h-14 p-1 rounded-xl cursor-pointer transition-colors duration-100 flex flex-col items-center justify-between relative select-none border active:scale-95 ${
-                  isSelected
-                    ? 'liquid-glass-accent shadow-md border-transparent text-white'
-                    : isToday
-                    ? 'bg-black/10 dark:bg-white/20 border-black/30 dark:border-white/30'
-                    : 'bg-black/[0.03] dark:bg-white/[0.04] border-black/5 dark:border-white/10 hover:bg-black/[0.07] dark:hover:bg-white/[0.08]'
-                }`}
+      {/* 2-Column Responsive Layout: Calendar Grid on Left, Sticky Agenda on Right */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* Left Column: Calendar & Controls */}
+        <div className="lg:col-span-7 space-y-3">
+          {/* Month Navigation & Actions Header */}
+          <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-5 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={prevMonth}
+                className="liquid-glass-btn p-2 rounded-xl text-slate-700 dark:text-slate-300 transition active:scale-95 cursor-pointer"
+                aria-label="Previous Month"
               >
-                <div className="w-full flex justify-center items-center">
-                  <span
-                    className={`text-xs sm:text-sm font-bold ${
-                      isToday && !isSelected
-                        ? 'w-6 h-6 rounded-full bg-black/10 dark:bg-white/20 flex items-center justify-center font-black'
-                        : 'font-bold'
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 px-1 select-none min-w-[140px] text-center">
+                {monthName}
+              </h2>
+
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="liquid-glass-btn p-2 rounded-xl text-slate-700 dark:text-slate-300 transition active:scale-95 cursor-pointer"
+                aria-label="Next Month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={todayMonth}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 ml-1 transition cursor-pointer"
+              >
+                Today
+              </button>
+            </div>
+
+            {/* Quick Add Buttons & View Toggle */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => openAddModal('birthday')}
+                className="liquid-glass-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-slate-800 dark:text-slate-200 text-xs font-bold transition active:scale-95 cursor-pointer"
+              >
+                <Cake className="w-4 h-4" />
+                <span>+ Birthday</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openAddModal('event')}
+                className="liquid-glass-accent inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-black shadow-sm transition active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Event</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Upcoming Event Alert Banner */}
+          {upcoming && (
+            <div className="liquid-glass-card liquid-specular px-4 py-2.5 rounded-2xl flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <Sparkles className="w-4 h-4 text-slate-700 dark:text-slate-300 shrink-0" />
+                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                  Upcoming: {upcoming.title}
+                </span>
+              </div>
+              <span className="shrink-0 px-2.5 py-0.5 rounded-full liquid-glass-accent text-[10px] font-bold shadow-sm">
+                {upcoming.daysRemaining === 0 ? 'Today!' : `In ${upcoming.daysRemaining} days (${upcoming.dateFormatted})`}
+              </span>
+            </div>
+          )}
+
+          {/* Month Calendar Grid */}
+          <div className="liquid-glass-card liquid-specular rounded-3xl p-3.5 sm:p-5 space-y-2">
+            {/* Days of Week Header */}
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-xs font-bold text-slate-400 py-1">
+              <span>Sun</span>
+              <span>Mon</span>
+              <span>Tue</span>
+              <span>Wed</span>
+              <span>Thu</span>
+              <span>Fri</span>
+              <span>Sat</span>
+            </div>
+
+            {/* Days Grid with Compact Cell Height */}
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+              {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                <div key={`blank-${i}`} className="h-9 sm:h-11 rounded-xl bg-transparent" />
+              ))}
+
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const dayNumber = i + 1;
+                const dateStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}-${dayNumber.toString().padStart(2, '0')}`;
+                const isSelected = dateStr === selectedDateStr;
+                const isToday = dateStr === todayStr;
+
+                const hasBirthdays = birthdayDates.has(dateStr);
+                const hasHoliday = holidayDaysMap.has(dayNumber);
+                const hasAnyItem = activeEventDates.has(dateStr) || activeTaskDates.has(dateStr) || hasHoliday;
+
+                return (
+                  <div
+                    key={dateStr}
+                    onClick={() => handleSelectDate(dateStr)}
+                    className={`h-9 sm:h-11 p-1 rounded-xl cursor-pointer transition-colors duration-100 flex flex-col items-center justify-between relative select-none border active:scale-95 ${
+                      isSelected
+                        ? 'liquid-glass-accent shadow-md border-transparent text-white'
+                        : isToday
+                        ? 'bg-black/10 dark:bg-white/20 border-black/30 dark:border-white/30'
+                        : 'bg-black/[0.03] dark:bg-white/[0.04] border-black/5 dark:border-white/10 hover:bg-black/[0.07] dark:hover:bg-white/[0.08]'
                     }`}
                   >
-                    {dayNumber}
-                  </span>
-                </div>
+                    <div className="w-full flex justify-center items-center">
+                      <span
+                        className={`text-xs sm:text-sm font-bold ${
+                          isToday && !isSelected
+                            ? 'w-5 h-5 rounded-full bg-black/10 dark:bg-white/20 flex items-center justify-center font-black text-[11px]'
+                            : 'font-bold'
+                        }`}
+                      >
+                        {dayNumber}
+                      </span>
+                    </div>
 
-                {/* Status Dot / Birthday / Festival Indicator */}
-                <div className="h-2.5 flex items-center justify-center gap-0.5">
-                  {hasBirthdays ? (
-                    <span className="text-[10px] leading-none" title="Birthday">🎂</span>
-                  ) : hasHoliday ? (
-                    <span className="text-[9px] leading-none" title="Festival / Holiday">🌟</span>
-                  ) : hasAnyItem ? (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isSelected
-                          ? 'bg-current opacity-70'
-                          : 'bg-black/50 dark:bg-white/50'
-                      }`}
-                    />
-                  ) : null}
+                    {/* Status Dot / Birthday / Festival Indicator */}
+                    <div className="h-2 flex items-center justify-center gap-0.5">
+                      {hasBirthdays ? (
+                        <span className="text-[9px] leading-none" title="Birthday">🎂</span>
+                      ) : hasHoliday ? (
+                        <span className="text-[8px] leading-none" title="Festival / Holiday">🌟</span>
+                      ) : hasAnyItem ? (
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isSelected
+                              ? 'bg-current opacity-70'
+                              : 'bg-black/50 dark:bg-white/50'
+                          }`}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Regional & Local Festivals of the Month */}
+          {monthHolidays.length > 0 && (
+            <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-xl liquid-glass-accent shrink-0">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                      Festivals &amp; Holidays • {monthName}
+                    </h3>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      Tap any festival to select the date
+                    </span>
+                  </div>
                 </div>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full liquid-glass-dock text-slate-700 dark:text-slate-300 shrink-0">
+                  {monthHolidays.length} {monthHolidays.length === 1 ? 'event' : 'events'}
+                </span>
               </div>
-            );
-          })}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {monthHolidays.map(({ day, holiday }) => {
+                  const hDateStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                  const isHolidaySelected = hDateStr === selectedDateStr;
+                  return (
+                    <div
+                      key={`${holiday.name}-${day}`}
+                      onClick={() => handleSelectDate(hDateStr)}
+                      className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-[0.98] ${
+                        isHolidaySelected
+                          ? 'liquid-glass-accent shadow-md border-transparent'
+                          : 'bg-black/[0.03] dark:bg-white/[0.04] border-black/10 dark:border-white/10 hover:bg-black/[0.06] dark:hover:bg-white/[0.08]'
+                      }`}
+                      title="Click to view details for this date"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex flex-col items-center justify-center shrink-0 border border-black/10 dark:border-white/15">
+                          <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 leading-none">
+                            {currentDate.toLocaleString('default', { month: 'short' })}
+                          </span>
+                          <span className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none mt-0.5">
+                            {day}
+                          </span>
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
+                            {holiday.name}
+                          </div>
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold truncate">
+                            {holiday.kannadaName}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${
+                          holiday.type === 'public'
+                            ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                            : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {holiday.type === 'public' ? 'Public Holiday' : 'Festival'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Selected Date Agenda View (Directly Visible Inline on Date Selection) */}
-      <div ref={agendaRef} className="liquid-glass-card liquid-specular rounded-3xl p-5 sm:p-6 space-y-4">
-        {/* Date Header & Inline Action Bar */}
-        <div className="flex items-center justify-between border-b border-white/10 dark:border-white/5 pb-3 flex-wrap gap-2">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-              Agenda & Events
-            </span>
-            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
-              {formattedSelectedDate}
-            </h3>
-          </div>
+        {/* Right Column: Selected Date Agenda View (Sticky on Desktop, Auto-Scrolled on Mobile) */}
+        <div ref={agendaRef} className="lg:col-span-5 space-y-3 lg:sticky lg:top-4">
+          <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-5 space-y-4 shadow-sm">
+            {/* Date Header & Inline Action Bar */}
+            <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-3 flex-wrap gap-2">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Agenda &amp; Events
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
+                  {formattedSelectedDate}
+                </h3>
+              </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => openAddModal('birthday')}
-              className="liquid-glass-btn px-3 py-1.5 rounded-xl text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Cake className="w-3.5 h-3.5" />
-              <span>Add Birthday</span>
-            </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openAddModal('birthday')}
+                  className="liquid-glass-btn px-2.5 py-1.5 rounded-xl text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Cake className="w-3.5 h-3.5" />
+                  <span>+ Birthday</span>
+                </button>
 
-            <button
-              type="button"
-              onClick={() => openAddModal('event')}
-              className="liquid-glass-accent px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Event</span>
-            </button>
-          </div>
-        </div>
+                <button
+                  type="button"
+                  onClick={() => openAddModal('event')}
+                  className="liquid-glass-accent px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Event</span>
+                </button>
+              </div>
+            </div>
 
         {/* Holiday Banner if applicable */}
         {selectedHoliday && (
@@ -700,79 +781,8 @@ export const CalendarPlannerTab = React.memo(function CalendarPlannerTab() {
           )}
         </div>
       </div>
-
-      {/* Regional & Local Festivals of the Month */}
-      {monthHolidays.length > 0 && (
-        <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
-          <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-2.5">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-xl liquid-glass-accent shrink-0">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
-                  Festivals &amp; Holidays • {monthName}
-                </h3>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                  Tap any festival to select the date
-                </span>
-              </div>
-            </div>
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full liquid-glass-dock text-slate-700 dark:text-slate-300 shrink-0">
-              {monthHolidays.length} {monthHolidays.length === 1 ? 'event' : 'events'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {monthHolidays.map(({ day, holiday }) => {
-              const hDateStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-              const isHolidaySelected = hDateStr === selectedDateStr;
-              return (
-                <div
-                  key={`${holiday.name}-${day}`}
-                  onClick={() => handleSelectDate(hDateStr)}
-                  className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-[0.98] ${
-                    isHolidaySelected
-                      ? 'liquid-glass-accent shadow-md border-transparent'
-                      : 'bg-black/[0.03] dark:bg-white/[0.04] border-black/10 dark:border-white/10 hover:bg-black/[0.06] dark:hover:bg-white/[0.08]'
-                  }`}
-                  title="Click to view details for this date"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex flex-col items-center justify-center shrink-0 border border-black/10 dark:border-white/15">
-                      <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 leading-none">
-                        {currentDate.toLocaleString('default', { month: 'short' })}
-                      </span>
-                      <span className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none mt-0.5">
-                        {day}
-                      </span>
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
-                        {holiday.name}
-                      </div>
-                      <div className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold truncate">
-                        {holiday.kannadaName}
-                      </div>
-                    </div>
-                  </div>
-
-                  <span
-                    className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${
-                      holiday.type === 'public'
-                        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
-                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                    }`}
-                  >
-                    {holiday.type === 'public' ? 'Public Holiday' : 'Festival'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+    </div>
+  </div>
 
       {/* Add Event / Birthday Dialog Modal (Non-clipping, fully scrollable, z-[100] on top of all navs) */}
       {isModalOpen && (

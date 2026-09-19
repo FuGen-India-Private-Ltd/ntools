@@ -124,7 +124,7 @@ export const DualPaneConverter = React.memo(function DualPaneConverter({ t }: Du
       {/* Dual Pane Layout with Clearly Defined Bordered Containers & Smooth Focus Transitions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5">
         {/* 1. Visible Source Input Container */}
-        <div className="rounded-2xl sm:rounded-3xl liquid-glass-card liquid-specular border-2 border-white/60 dark:border-white/10 focus-within:border-black/50 dark:focus-within:border-white/50 transition-all duration-300 p-3 sm:p-4 shadow-sm flex flex-col h-44 sm:h-64">
+        <div className="rounded-2xl sm:rounded-3xl liquid-glass-card liquid-specular border-2 border-white/60 dark:border-white/10 focus-within:border-black/50 dark:focus-within:border-white/50 transition-all duration-300 p-3 sm:p-4 shadow-sm flex flex-col h-36 sm:h-64">
           {/* Header */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-200/50 dark:border-slate-800/60 shrink-0">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -170,7 +170,7 @@ export const DualPaneConverter = React.memo(function DualPaneConverter({ t }: Du
         </div>
 
         {/* 2. Visible Converted Result Container */}
-        <div className="rounded-2xl sm:rounded-3xl liquid-glass-card liquid-specular border-2 border-white/60 dark:border-white/10 p-3 sm:p-4 shadow-sm flex flex-col h-44 sm:h-64 transition-all duration-300">
+        <div className="rounded-2xl sm:rounded-3xl liquid-glass-card liquid-specular border-2 border-white/60 dark:border-white/10 p-3 sm:p-4 shadow-sm flex flex-col h-36 sm:h-64 transition-all duration-300">
           {/* Header */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-200/50 dark:border-slate-800/60 shrink-0">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">

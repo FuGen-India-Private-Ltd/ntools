@@ -170,7 +170,7 @@ interface CircularArcNavigatorProps {
 
 // Spacing between icons and scrub sensitivity distance (lower = faster, snappier scrub)
 const ITEM_WIDTH = 56;
-const STEP_PX = 30; // 30px per tab change = ultra snappy, agile continuous scrub
+const STEP_PX = 20; // 20px per tab change = ultra-fast agile continuous scrubbing across multiple tabs
 
 export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   activeModule,
@@ -365,17 +365,14 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
           : 'opacity-100 translate-y-0'
       }`}
     >
-      {/* Sleek Obsidian Glass Sliding Dock */}
+      {/* Sleek Obsidian Glass Sliding Dock (Pure Pitch Black, Zero Breathing Lights) */}
       <div
-        className="relative w-[300px] sm:w-[340px] h-[68px] px-3 rounded-[34px] liquid-glass-arc-dock liquid-specular flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl"
+        className="relative w-[300px] sm:w-[340px] h-[68px] px-3 rounded-[34px] liquid-glass-arc-dock flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        {/* Top crystal specular refraction beam */}
-        <div className="absolute top-0 inset-x-8 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/40 to-transparent pointer-events-none" />
-
         {/* 1:1 Smooth Continuous Sliding Carousel */}
         {ARC_ITEMS.map((item, i) => {
           const Icon = item.icon;
