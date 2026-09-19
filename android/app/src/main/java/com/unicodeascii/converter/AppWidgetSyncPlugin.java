@@ -266,7 +266,17 @@ public class AppWidgetSyncPlugin extends Plugin {
                         ctx.startActivity(intent);
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                try {
+                    Intent fallbackIntent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                    if (act != null) {
+                        act.startActivity(fallbackIntent);
+                    } else if (ctx != null) {
+                        fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        ctx.startActivity(fallbackIntent);
+                    }
+                } catch (Exception ignored) {}
+            }
         }
         JSObject ret = new JSObject();
         ret.put("success", true);
