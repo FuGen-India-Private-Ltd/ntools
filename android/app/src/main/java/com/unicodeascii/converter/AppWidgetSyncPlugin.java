@@ -493,7 +493,7 @@ public class AppWidgetSyncPlugin extends Plugin {
             Context context = getContext();
             if (context != null) {
                 SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                prefs.edit().putString(key, value).apply();
+                prefs.edit().putString(key, value).commit();
             }
         } catch (Exception ignored) {}
     }

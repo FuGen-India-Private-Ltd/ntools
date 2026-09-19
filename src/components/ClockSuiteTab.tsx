@@ -233,16 +233,20 @@ export function ClockSuiteTab() {
     if (alarm && !alarm.isEnabled) {
       ensureAlarmPermissions();
     }
-    setAlarms(
-      alarms.map((a) => (a.id === id ? { ...a, isEnabled: !a.isEnabled } : a))
-    );
+    const updated = alarms.map((a) => (a.id === id ? { ...a, isEnabled: !a.isEnabled } : a));
+    setAlarms(updated);
+    saveStoredAlarms(updated);
+    syncAlarmsToNative(updated);
   };
 
   const handleDeleteAlarm = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     audioAlerts.stopCurrentAlarm();
     setPlayingAlarmSoundId(null);
-    setAlarms(alarms.filter((a) => a.id !== id));
+    const updated = alarms.filter((a) => a.id !== id);
+    setAlarms(updated);
+    saveStoredAlarms(updated);
+    syncAlarmsToNative(updated);
     if (expandedAlarmId === id) setExpandedAlarmId(null);
   };
 
@@ -321,24 +325,23 @@ export function ClockSuiteTab() {
     setPlayingAlarmSoundId(null);
     ensureAlarmPermissions();
 
+    let updated: AlarmItem[];
     if (editingAlarmId) {
       // Update existing alarm
-      setAlarms(
-        alarms.map((a) =>
-          a.id === editingAlarmId
-            ? {
-                ...a,
-                time: alarmTime,
-                label: alarmLabel.trim() || 'Alarm',
-                days: alarmDays.length > 0 ? alarmDays : [0, 1, 2, 3, 4, 5, 6],
-                soundType: alarmSound,
-                customTrackName: alarmSound === 'custom_music' ? customTrackName : undefined,
-                customDataUrl: alarmSound === 'custom_music' ? customDataUrl : undefined,
-                vibrate: alarmVibrate,
-                snoozeMinutes: alarmSnooze,
-              }
-            : a
-        )
+      updated = alarms.map((a) =>
+        a.id === editingAlarmId
+          ? {
+              ...a,
+              time: alarmTime,
+              label: alarmLabel.trim() || 'Alarm',
+              days: alarmDays.length > 0 ? alarmDays : [0, 1, 2, 3, 4, 5, 6],
+              soundType: alarmSound,
+              customTrackName: alarmSound === 'custom_music' ? customTrackName : undefined,
+              customDataUrl: alarmSound === 'custom_music' ? customDataUrl : undefined,
+              vibrate: alarmVibrate,
+              snoozeMinutes: alarmSnooze,
+            }
+          : a
       );
     } else {
       // Add new alarm
@@ -354,8 +357,11 @@ export function ClockSuiteTab() {
         vibrate: alarmVibrate,
         snoozeMinutes: alarmSnooze,
       };
-      setAlarms([item, ...alarms]);
+      updated = [item, ...alarms];
     }
+    setAlarms(updated);
+    saveStoredAlarms(updated);
+    syncAlarmsToNative(updated);
     setIsAddAlarmOpen(false);
   };
 

@@ -134,27 +134,34 @@ public class AlarmReceiver extends BroadcastReceiver {
 
                 int flags = PendingIntent.FLAG_UPDATE_CURRENT;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
-                PendingIntent pi = PendingIntent.getBroadcast(context, (alarmId + "_snooze").hashCode(), snoozeIntent, flags);
+                PendingIntent pi = PendingIntent.getBroadcast(context, Math.abs((alarmId + "_snooze").hashCode()), snoozeIntent, flags);
 
                 long triggerAt = System.currentTimeMillis() + (10 * 60 * 1000); // 10 minutes
 
                 Intent showIntent = new Intent(context, MainActivity.class);
                 showIntent.putExtra("route", "clock");
-                PendingIntent showPI = PendingIntent.getActivity(context, (alarmId + "_snooze_show").hashCode(), showIntent, flags);
+                PendingIntent showPI = PendingIntent.getActivity(context, Math.abs((alarmId + "_snooze_show").hashCode()), showIntent, flags);
 
-                boolean canScheduleExact = true;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        am.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAt, showPI), pi);
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                    } else {
+                        am.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                    }
+                } catch (SecurityException se) {
                     try {
-                        canScheduleExact = am.canScheduleExactAlarms();
-                    } catch (Exception ignored) {}
-                }
-
-                if (canScheduleExact && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    am.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAt, showPI), pi);
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
-                } else {
-                    am.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                        } else {
+                            am.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                        }
+                    } catch (Exception fallback) {
+                        try {
+                            am.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                        } catch (Exception ignored) {}
+                    }
                 }
 
                 BootReceiver.updateUpcomingAlarmNotification(
@@ -195,7 +202,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             }
 
             if (modified) {
-                prefs.edit().putString(AppWidgetSyncPlugin.KEY_ALARMS, arr.toString()).apply();
+                prefs.edit().putString(AppWidgetSyncPlugin.KEY_ALARMS, arr.toString()).commit();
                 MainActivity.dispatchJsEvent("alarms-updated");
             }
         } catch (Exception ignored) {}

@@ -13,7 +13,7 @@ import {
   formatStopwatchTime,
 } from '../lib/timeAndClock';
 import { audioAlerts } from '../lib/audioAlerts';
-import { syncPomodoroToNative } from '../lib/widgetSyncBridge';
+import { syncPomodoroToNative, syncAlarmsToNative } from '../lib/widgetSyncBridge';
 import {
   Timer,
   Clock,
@@ -223,18 +223,25 @@ export function StudyClockSuiteTab() {
       days: [1, 2, 3, 4, 5],
       isEnabled: true,
     };
-    setAlarms([...alarms, newAlarm]);
+    const updated = [...alarms, newAlarm];
+    setAlarms(updated);
+    saveStoredAlarms(updated);
+    syncAlarmsToNative(updated);
     setNewAlarmLabel('');
   };
 
   const handleDeleteAlarm = (id: string) => {
-    setAlarms(alarms.filter((a) => a.id !== id));
+    const updated = alarms.filter((a) => a.id !== id);
+    setAlarms(updated);
+    saveStoredAlarms(updated);
+    syncAlarmsToNative(updated);
   };
 
   const handleToggleAlarm = (id: string) => {
-    setAlarms(
-      alarms.map((a) => (a.id === id ? { ...a, isEnabled: !a.isEnabled } : a))
-    );
+    const updated = alarms.map((a) => (a.id === id ? { ...a, isEnabled: !a.isEnabled } : a));
+    setAlarms(updated);
+    saveStoredAlarms(updated);
+    syncAlarmsToNative(updated);
   };
 
   return (
