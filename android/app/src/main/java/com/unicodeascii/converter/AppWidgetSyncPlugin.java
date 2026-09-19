@@ -306,6 +306,10 @@ public class AppWidgetSyncPlugin extends Plugin {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notifications = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
             }
+            try {
+                androidx.core.app.NotificationManagerCompat nm = androidx.core.app.NotificationManagerCompat.from(ctx);
+                notifications = notifications && nm.areNotificationsEnabled();
+            } catch (Exception ignored) {}
         }
 
         JSObject ret = new JSObject();
@@ -324,11 +328,14 @@ public class AppWidgetSyncPlugin extends Plugin {
         boolean granted = true;
         Context ctx = getContext();
         if (ctx != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                granted = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-                granted = (nm != null) && nm.areNotificationsEnabled();
+            try {
+                androidx.core.app.NotificationManagerCompat nm = androidx.core.app.NotificationManagerCompat.from(ctx);
+                granted = nm.areNotificationsEnabled();
+                if (granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    granted = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                }
+            } catch (Exception e) {
+                granted = true;
             }
         }
         JSObject ret = new JSObject();

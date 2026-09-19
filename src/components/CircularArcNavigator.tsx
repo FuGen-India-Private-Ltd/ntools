@@ -168,9 +168,9 @@ interface CircularArcNavigatorProps {
   lang: 'en' | 'kn';
 }
 
-// Spacing between icons and scrub sensitivity distance (lower = faster, snappier scrub)
+// Spacing between icons and scrub sensitivity distance (balanced for smooth, non-jerky scrubbing)
 const ITEM_WIDTH = 56;
-const STEP_PX = 20; // 20px per tab change = ultra-fast agile continuous scrubbing across multiple tabs
+const STEP_PX = 38; // 38px per tab change = smooth, deliberate control without runaway tab skipping
 
 export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   activeModule,
@@ -247,7 +247,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     } else {
       pendingCommitTimerRef.current = setTimeout(() => {
         onSelectModule(modId);
-      }, 50);
+      }, 85);
     }
   };
 
@@ -278,7 +278,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     lastTimeRef.current = now;
 
     const totalTravel = e.clientX - startXRef.current;
-    if (Math.abs(totalTravel) > 6) {
+    if (Math.abs(totalTravel) > 8) {
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch (_) {}
@@ -314,7 +314,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
-      setDragOffsetPx(accumulatedDeltaRef.current);
+      setDragOffsetPx(accumulatedDeltaRef.current * 0.8);
     });
   };
 
@@ -338,9 +338,9 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
 
     // "one slide, one movement": If user performed a single swipe/flick without continuous holding
     if (stepsTakenRef.current === 0) {
-      const isFlick = Math.abs(velocityXRef.current) > 0.22 || Math.abs(totalTravel) > 12;
+      const isFlick = Math.abs(velocityXRef.current) > 0.28 || Math.abs(totalTravel) > 16;
       if (isFlick) {
-        const step = (totalTravel < 0 || velocityXRef.current < -0.22) ? 1 : -1;
+        const step = (totalTravel < 0 || velocityXRef.current < -0.28) ? 1 : -1;
         const newIdx = (activeIdxRef.current + step + numItems * 100) % numItems;
         activeIdxRef.current = newIdx;
         const targetMod = ARC_ITEMS[newIdx].id;

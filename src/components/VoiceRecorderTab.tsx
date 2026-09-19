@@ -129,6 +129,7 @@ export function VoiceRecorderTab() {
   const timerIntervalRef = useRef<any>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const livePeaksRef = useRef<number[]>([]);
+  const smoothedHeightsRef = useRef<number[]>(new Array(44).fill(0));
 
   // Helper to generate representative waveform peaks if not recorded
   function generatePseudoPeaks(seed = 1): number[] {
@@ -202,7 +203,7 @@ export function VoiceRecorderTab() {
 
     let offset = 0;
     const renderIdle = () => {
-      offset += 0.04;
+      offset += 0.012;
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
       if (rect.width > 0 && (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr))) {
@@ -309,7 +310,7 @@ export function VoiceRecorderTab() {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.fillRect(0, centerY - 0.5 * dpr, width, 1 * dpr);
 
-      // 1. Render dynamic frequency spectrum bars
+      // 1. Render dynamic frequency spectrum bars with EMA smoothing
       const numBars = 44;
       const barWidth = Math.max(3, width / numBars - 3 * dpr);
 
@@ -317,7 +318,9 @@ export function VoiceRecorderTab() {
         const binIndex = Math.floor((i / numBars) * (bufferLength * 0.85));
         const rawValue = freqArray[binIndex] || 0;
         const normalized = rawValue / 255;
-        const halfHeight = Math.max(2.5 * dpr, normalized * height * 0.44);
+        const targetHalfHeight = Math.max(2.5 * dpr, normalized * height * 0.44);
+        smoothedHeightsRef.current[i] += (targetHalfHeight - (smoothedHeightsRef.current[i] || 0)) * 0.30;
+        const halfHeight = smoothedHeightsRef.current[i];
         const x = i * (barWidth + 3 * dpr);
         const y = centerY - halfHeight;
         const fullHeight = halfHeight * 2;
@@ -782,7 +785,7 @@ export function VoiceRecorderTab() {
                 </>
               ) : (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-white" />
                   <span className="text-white font-mono font-bold tracking-widest uppercase text-[11px]">RECORDING</span>
                 </>
               )

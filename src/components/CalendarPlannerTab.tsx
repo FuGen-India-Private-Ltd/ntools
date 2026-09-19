@@ -491,82 +491,9 @@ export const CalendarPlannerTab = React.memo(function CalendarPlannerTab() {
               })}
             </div>
           </div>
-
-          {/* Regional & Local Festivals of the Month */}
-          {monthHolidays.length > 0 && (
-            <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-xl liquid-glass-accent shrink-0">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
-                      Festivals &amp; Holidays • {monthName}
-                    </h3>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                      Tap any festival to select the date
-                    </span>
-                  </div>
-                </div>
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full liquid-glass-dock text-slate-700 dark:text-slate-300 shrink-0">
-                  {monthHolidays.length} {monthHolidays.length === 1 ? 'event' : 'events'}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {monthHolidays.map(({ day, holiday }) => {
-                  const hDateStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                  const isHolidaySelected = hDateStr === selectedDateStr;
-                  return (
-                    <div
-                      key={`${holiday.name}-${day}`}
-                      onClick={() => handleSelectDate(hDateStr)}
-                      className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-[0.98] ${
-                        isHolidaySelected
-                          ? 'liquid-glass-accent shadow-md border-transparent'
-                          : 'bg-black/[0.03] dark:bg-white/[0.04] border-black/10 dark:border-white/10 hover:bg-black/[0.06] dark:hover:bg-white/[0.08]'
-                      }`}
-                      title="Click to view details for this date"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex flex-col items-center justify-center shrink-0 border border-black/10 dark:border-white/15">
-                          <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 leading-none">
-                            {currentDate.toLocaleString('default', { month: 'short' })}
-                          </span>
-                          <span className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none mt-0.5">
-                            {day}
-                          </span>
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
-                            {holiday.name}
-                          </div>
-                          <div className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold truncate">
-                            {holiday.kannadaName}
-                          </div>
-                        </div>
-                      </div>
-
-                      <span
-                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${
-                          holiday.type === 'public'
-                            ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
-                            : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                        }`}
-                      >
-                        {holiday.type === 'public' ? 'Public Holiday' : 'Festival'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Right Column: Selected Date Agenda View (Sticky on Desktop, Auto-Scrolled on Mobile) */}
+        {/* Selected Date Agenda View (Day's Events) - Appears immediately below Calendar on mobile */}
         <div ref={agendaRef} className="lg:col-span-5 space-y-3 lg:sticky lg:top-4">
           <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-5 space-y-4 shadow-sm">
             {/* Date Header & Inline Action Bar */}
@@ -782,6 +709,81 @@ export const CalendarPlannerTab = React.memo(function CalendarPlannerTab() {
         </div>
       </div>
     </div>
+
+    {/* Regional & Local Festivals of the Month - Placed BELOW Day's Events card */}
+    {monthHolidays.length > 0 && (
+      <div className="lg:col-span-7 space-y-3">
+        <div className="liquid-glass-card liquid-specular rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-xl liquid-glass-accent shrink-0">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                  Festivals &amp; Holidays • {monthName}
+                </h3>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  Tap any festival to select the date
+                </span>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full liquid-glass-dock text-slate-700 dark:text-slate-300 shrink-0">
+              {monthHolidays.length} {monthHolidays.length === 1 ? 'event' : 'events'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {monthHolidays.map(({ day, holiday }) => {
+              const hDateStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+              const isHolidaySelected = hDateStr === selectedDateStr;
+              return (
+                <div
+                  key={`${holiday.name}-${day}`}
+                  onClick={() => handleSelectDate(hDateStr)}
+                  className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-[0.98] ${
+                    isHolidaySelected
+                      ? 'liquid-glass-accent shadow-md border-transparent'
+                      : 'bg-black/[0.03] dark:bg-white/[0.04] border-black/10 dark:border-white/10 hover:bg-black/[0.06] dark:hover:bg-white/[0.08]'
+                  }`}
+                  title="Click to view details for this date"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex flex-col items-center justify-center shrink-0 border border-black/10 dark:border-white/15">
+                      <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400 leading-none">
+                        {currentDate.toLocaleString('default', { month: 'short' })}
+                      </span>
+                      <span className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none mt-0.5">
+                        {day}
+                      </span>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
+                        {holiday.name}
+                      </div>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold truncate">
+                        {holiday.kannadaName}
+                      </div>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${
+                      holiday.type === 'public'
+                        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                    }`}
+                  >
+                    {holiday.type === 'public' ? 'Public Holiday' : 'Festival'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 
       {/* Add Event / Birthday Dialog Modal (Non-clipping, fully scrollable, z-[100] on top of all navs) */}

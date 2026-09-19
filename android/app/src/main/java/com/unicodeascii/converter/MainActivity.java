@@ -93,6 +93,16 @@ public class MainActivity extends BridgeActivity {
         try {
             BootReceiver.rescheduleAllClockAlarms(this);
         } catch (Exception ignored) {}
+
+        // Broadcast permissions-updated so web UI permission cards/modals refresh immediately
+        try {
+            dispatchJsEvent("permissions-updated");
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().postDelayed(() -> dispatchJsEvent("permissions-updated"), 350);
+                getBridge().getWebView().postDelayed(() -> dispatchJsEvent("permissions-updated"), 1000);
+                getBridge().getWebView().postDelayed(() -> dispatchJsEvent("permissions-updated"), 2200);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void requestNeededPermissions() {
@@ -142,6 +152,12 @@ public class MainActivity extends BridgeActivity {
             pendingPermissionRequest = null;
         }
         dispatchJsEvent("permissions-updated");
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().postDelayed(() -> dispatchJsEvent("permissions-updated"), 350);
+                getBridge().getWebView().postDelayed(() -> dispatchJsEvent("permissions-updated"), 1000);
+            }
+        } catch (Exception ignored) {}
     }
 
     private boolean isExitingFromBack = false;

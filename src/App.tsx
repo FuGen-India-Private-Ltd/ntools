@@ -281,7 +281,7 @@ export function App() {
 
     const timer = setTimeout(checkEntrancePermissions, 300);
 
-    const onFocus = async () => {
+    const onFocusOrResume = async () => {
       const perms = await checkAllStartupPermissionsNative();
       setStartupPerms(perms);
       setHasOverlayPermission(perms.overlay);
@@ -297,11 +297,39 @@ export function App() {
       } catch (e) {}
     };
 
-    window.addEventListener('focus', onFocus);
+    window.addEventListener('focus', onFocusOrResume);
+    window.addEventListener('permissions-updated', onFocusOrResume);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        onFocusOrResume();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('focus', onFocusOrResume);
+      window.removeEventListener('permissions-updated', onFocusOrResume);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
+  }, []);
+
+  const handleRequestPermission = useCallback(async (action: () => Promise<any>) => {
+    try {
+      await action();
+    } catch (e) {}
+    const poll = async () => {
+      const perms = await checkAllStartupPermissionsNative();
+      setStartupPerms(perms);
+      setHasOverlayPermission(perms.overlay);
+      setHasExactAlarmPermission(perms.exactAlarm);
+      if (perms.allEssentialGranted) {
+        setShowEntrancePermissionModal(false);
+      }
+    };
+    setTimeout(poll, 400);
+    setTimeout(poll, 1200);
+    setTimeout(poll, 2500);
   }, []);
 
   const t = translations[lang];
@@ -655,9 +683,7 @@ export function App() {
                 ) : (
                   <button
                     type="button"
-                    onClick={async () => {
-                      await requestExactAlarmPermissionNative();
-                    }}
+                    onClick={() => handleRequestPermission(requestExactAlarmPermissionNative)}
                     className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
                   >
                     Enable
@@ -688,9 +714,7 @@ export function App() {
                 ) : (
                   <button
                     type="button"
-                    onClick={async () => {
-                      await requestBatteryOptimizationExemptionNative();
-                    }}
+                    onClick={() => handleRequestPermission(requestBatteryOptimizationExemptionNative)}
                     className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
                   >
                     Enable
@@ -721,9 +745,7 @@ export function App() {
                 ) : (
                   <button
                     type="button"
-                    onClick={async () => {
-                      await requestOverlayPermissionNative();
-                    }}
+                    onClick={() => handleRequestPermission(requestOverlayPermissionNative)}
                     className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
                   >
                     Enable
@@ -754,9 +776,7 @@ export function App() {
                 ) : (
                   <button
                     type="button"
-                    onClick={async () => {
-                      await requestNotificationPermissionNative();
-                    }}
+                    onClick={() => handleRequestPermission(requestNotificationPermissionNative)}
                     className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
                   >
                     Enable
@@ -787,9 +807,7 @@ export function App() {
                 ) : (
                   <button
                     type="button"
-                    onClick={async () => {
-                      await requestAudioPermissionNative();
-                    }}
+                    onClick={() => handleRequestPermission(requestAudioPermissionNative)}
                     className="px-3.5 py-1.5 rounded-xl liquid-glass-accent text-xs font-bold active:scale-95 transition shrink-0"
                   >
                     Enable

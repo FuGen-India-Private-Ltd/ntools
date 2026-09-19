@@ -134,9 +134,16 @@ export function ClockSuiteTab() {
     refreshPermissions();
     window.addEventListener('focus', refreshPermissions);
     window.addEventListener('permissions-updated', refreshPermissions);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshPermissions();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('focus', refreshPermissions);
       window.removeEventListener('permissions-updated', refreshPermissions);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 
@@ -934,6 +941,9 @@ export function ClockSuiteTab() {
                   onClick={async () => {
                     await requestBatteryOptimizationExemptionNative();
                     await requestExactAlarmPermissionNative();
+                    setTimeout(refreshPermissions, 400);
+                    setTimeout(refreshPermissions, 1200);
+                    setTimeout(refreshPermissions, 2500);
                     window.dispatchEvent(new CustomEvent('app-toast', {
                       detail: {
                         id: `opt-${Date.now()}`,
@@ -972,7 +982,9 @@ export function ClockSuiteTab() {
                   type="button"
                   onClick={async () => {
                     await requestNotificationPermissionNative();
-                    setTimeout(refreshPermissions, 1200);
+                    setTimeout(refreshPermissions, 300);
+                    setTimeout(refreshPermissions, 1000);
+                    setTimeout(refreshPermissions, 2500);
                   }}
                   className="px-3 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-bold transition active:scale-95 shadow-sm cursor-pointer"
                 >
