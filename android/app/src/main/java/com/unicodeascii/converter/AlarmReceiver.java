@@ -26,22 +26,35 @@ public class AlarmReceiver extends BroadcastReceiver {
     public static final int UPCOMING_SCHEDULE_REQUEST_CODE = 90020;
 
     public static PowerManager.WakeLock sCpuWakeLock = null;
+    public static PowerManager.WakeLock sScreenWakeLock = null;
 
     public static synchronized void acquireWakeLock(Context context) {
-        if (sCpuWakeLock != null && sCpuWakeLock.isHeld()) {
-            return;
-        }
         try {
             PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
-                sCpuWakeLock = pm.newWakeLock(
-                    PowerManager.PARTIAL_WAKE_LOCK |
-                    PowerManager.ACQUIRE_CAUSES_WAKEUP |
-                    PowerManager.ON_AFTER_RELEASE,
-                    "ntools:alarm_receiver_wake"
-                );
-                sCpuWakeLock.setReferenceCounted(false);
-                sCpuWakeLock.acquire(60 * 1000L); // 60s guarantee
+                // 1. CPU Wakelock to keep processor active
+                if (sCpuWakeLock == null || !sCpuWakeLock.isHeld()) {
+                    sCpuWakeLock = pm.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK |
+                        PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                        PowerManager.ON_AFTER_RELEASE,
+                        "ntools:alarm_receiver_cpu_wake"
+                    );
+                    sCpuWakeLock.setReferenceCounted(false);
+                    sCpuWakeLock.acquire(60 * 1000L); // 60s guarantee
+                }
+
+                // 2. Screen Wakelock to immediately illuminate the display
+                if (sScreenWakeLock == null || !sScreenWakeLock.isHeld()) {
+                    sScreenWakeLock = pm.newWakeLock(
+                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
+                        PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                        PowerManager.ON_AFTER_RELEASE,
+                        "ntools:alarm_receiver_screen_wake"
+                    );
+                    sScreenWakeLock.setReferenceCounted(false);
+                    sScreenWakeLock.acquire(15 * 1000L); // 15s display illumination
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -53,6 +66,12 @@ public class AlarmReceiver extends BroadcastReceiver {
             if (sCpuWakeLock != null && sCpuWakeLock.isHeld()) {
                 sCpuWakeLock.release();
                 sCpuWakeLock = null;
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (sScreenWakeLock != null && sScreenWakeLock.isHeld()) {
+                sScreenWakeLock.release();
+                sScreenWakeLock = null;
             }
         } catch (Exception ignored) {}
     }
@@ -362,7 +381,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
     }
 
-    private void disableOneTimeAlarm(Context context, String alarmId) {
+    public static void disableOneTimeAlarm(Context context, String alarmId) {
         if (alarmId == null) return;
         try {
             SharedPreferences prefs = context.getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);

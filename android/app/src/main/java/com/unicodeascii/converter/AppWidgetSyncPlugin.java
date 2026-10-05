@@ -442,6 +442,74 @@ public class AppWidgetSyncPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void openAutoStartSettings(PluginCall call) {
+        Activity act = getActivity();
+        Context ctx = act != null ? act : getContext();
+        String pkg = ctx != null ? ctx.getPackageName() : "com.unicodeascii.converter";
+        boolean launched = false;
+
+        Intent[] autostartIntents = new Intent[] {
+            // Xiaomi / MIUI / HyperOS
+            new Intent().setComponent(new ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
+            // Huawei / Honor
+            new Intent().setComponent(new ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")),
+            new Intent().setComponent(new ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity")),
+            // Oppo / Realme / ColorOS
+            new Intent().setComponent(new ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")),
+            new Intent().setComponent(new ComponentName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity")),
+            // Vivo / iQOO / FuntouchOS / OriginOS
+            new Intent().setComponent(new ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity")),
+            new Intent().setComponent(new ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")),
+            new Intent().setComponent(new ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager")),
+            // Samsung
+            new Intent().setComponent(new ComponentName("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.BatteryActivity")),
+            new Intent().setComponent(new ComponentName("com.samsung.android.sm", "com.samsung.android.sm.ui.battery.BatteryActivity")),
+            // OnePlus / OxygenOS
+            new Intent().setComponent(new ComponentName("com.oneplus.security", "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"))
+        };
+
+        for (Intent intent : autostartIntents) {
+            try {
+                if (act != null) {
+                    act.startActivity(intent);
+                    launched = true;
+                    break;
+                } else if (ctx != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    ctx.startActivity(intent);
+                    launched = true;
+                    break;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (!launched) {
+            try {
+                Intent fallback = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                if (act != null) {
+                    act.startActivity(fallback);
+                } else if (ctx != null) {
+                    fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    ctx.startActivity(fallback);
+                }
+            } catch (Exception e) {
+                try {
+                    Intent details = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg));
+                    if (act != null) act.startActivity(details);
+                    else if (ctx != null) {
+                        details.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        ctx.startActivity(details);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        JSObject retVal = new JSObject();
+        retVal.put("success", true);
+        call.resolve(retVal);
+    }
+
+    @PluginMethod
     public void scheduleTimerAlarm(PluginCall call) {
         try {
             int seconds = call.getInt("seconds", 0);

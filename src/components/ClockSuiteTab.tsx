@@ -36,6 +36,7 @@ import {
   checkNotificationPermissionNative,
   requestNotificationPermissionNative,
   openNotificationSettingsNative,
+  openAutoStartSettingsNative,
 } from '../lib/widgetSyncBridge';
 import {
   Clock as ClockIcon,
@@ -935,7 +936,24 @@ export function ClockSuiteTab() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await openAutoStartSettingsNative();
+                    window.dispatchEvent(new CustomEvent('app-toast', {
+                      detail: {
+                        id: `autostart-${Date.now()}`,
+                        type: 'info',
+                        title: '🚀 Background Autostart Settings',
+                        description: 'Enable Autostart & background activity to guarantee alarms fire after hours of inactivity.',
+                      }
+                    }));
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 text-[11px] font-bold transition active:scale-95 cursor-pointer"
+                >
+                  Autostart
+                </button>
                 <button
                   type="button"
                   onClick={async () => {

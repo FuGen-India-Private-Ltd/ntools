@@ -23,7 +23,7 @@ import org.json.JSONObject;
 public class BootReceiver extends BroadcastReceiver {
 
     public static final int UPCOMING_ALARM_NOTIF_ID = 9001;
-    public static final String UPCOMING_ALARM_CHANNEL_ID = "ntools_upcoming_alarms";
+    public static final String UPCOMING_ALARM_CHANNEL_ID = "ntools_upcoming_alarms_v2";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -268,6 +268,10 @@ public class BootReceiver extends BroadcastReceiver {
             if (nm == null) return;
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    nm.deleteNotificationChannel("ntools_upcoming_alarms");
+                } catch (Exception ignored) {}
+
                 NotificationChannel channel = new NotificationChannel(
                     UPCOMING_ALARM_CHANNEL_ID,
                     "Upcoming Alarms",
@@ -353,10 +357,16 @@ public class BootReceiver extends BroadcastReceiver {
 
             PendingIntent pi = PendingIntent.getBroadcast(context, AlarmReceiver.UPCOMING_SCHEDULE_REQUEST_CODE, intent, flags);
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, showAt, pi);
-            } else {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, showAt, pi);
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, showAt, pi);
+                } else {
+                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, showAt, pi);
+                }
+            } catch (SecurityException se) {
+                try {
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, showAt, pi);
+                } catch (Exception ignored) {}
             }
         } catch (Exception e) {
             e.printStackTrace();

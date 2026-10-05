@@ -32,8 +32,10 @@ public class AlarmService extends Service {
 
     public static final String ACTION_START_ALARM = "com.unicodeascii.converter.ACTION_START_ALARM";
     public static final String ACTION_STOP_ALARM = "com.unicodeascii.converter.ACTION_STOP_ALARM";
-    public static final String ALARM_CHANNEL_ID = "ntools_ringing_alarms";
+    public static final String ALARM_CHANNEL_ID = "ntools_ringing_alarms_v2";
+    public static final String MISSED_ALARM_CHANNEL_ID = "ntools_missed_alarms_v2";
     public static final int NOTIFICATION_ID = 1001;
+    public static final int MISSED_NOTIFICATION_ID = 1002;
 
     public static AlarmService instance = null;
     private static boolean isAlarmRinging = false;
@@ -42,6 +44,7 @@ public class AlarmService extends Service {
     private Ringtone fallbackRingtone = null;
     private Vibrator vibrator = null;
     private PowerManager.WakeLock wakeLock = null;
+    private android.media.session.MediaSession mediaSession = null;
     private Handler autoStopHandler = new Handler(Looper.getMainLooper());
     private Runnable autoStopRunnable = null;
 
@@ -221,42 +224,85 @@ public class AlarmService extends Service {
             startForeground(NOTIFICATION_ID, notification);
         }
 
-        // 6. Ensure device Alarm Stream Volume is sufficiently loud
-        try {
-            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-            if (am != null) {
-                int currentVol = am.getStreamVolume(AudioManager.STREAM_ALARM);
-                int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
-                if (currentVol == 0 || currentVol < maxVol / 3) {
-                    am.setStreamVolume(AudioManager.STREAM_ALARM, Math.max(1, (int) (maxVol * 0.75f)), 0);
+        // 6. Active MediaSession for Android 14 FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK compliance
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                if (mediaSession == null) {
+                    mediaSession = new android.media.session.MediaSession(this, "NToolsAlarmSession");
+                    mediaSession.setActive(true);
                 }
-            }
-        } catch (Exception ignored) {}
+            } catch (Exception ignored) {}
+        }
 
-        // 7. Start Looping Audio Playback via MediaPlayer
+        // 7. Request Exclusive Alarm Audio Focus & Ensure device Alarm Volume is at least 85%
+        requestAlarmAudioFocus();
+        ensureMaxAlarmVolume();
+
+        // 8. Start Looping Audio Playback via MediaPlayer
         startAudioPlayback();
 
-        // 8. Start Repeating Vibration
+        // 9. Start Repeating Vibration
         startVibration();
 
-        // 9. Launch Overlay Activity from Foreground Service
+        // 10. Launch Overlay Activity from Foreground Service
         try {
             startActivity(overlayIntent);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // 10. Notify Web App Bridge that alarm started
+        // 11. Notify Web App Bridge that alarm started
         MainActivity.dispatchJsEvent("native-alarm-started");
 
-        // 11. Auto-snooze after 10 minutes of continuous ringing to prevent battery depletion
+        // 12. Auto-snooze after 10 minutes of continuous ringing to prevent battery depletion
         if (autoStopRunnable != null) {
             autoStopHandler.removeCallbacks(autoStopRunnable);
         }
         autoStopRunnable = () -> {
+            String savedLabel = currentAlarmLabel;
+            String savedTime = currentAlarmTime;
+            String savedId = currentAlarmId;
             stopAlarmExecution();
+            AlarmReceiver.disableOneTimeAlarm(this, savedId);
+            BootReceiver.rescheduleAllClockAlarms(this);
+            showMissedAlarmNotification(this, savedLabel, savedTime);
         };
         autoStopHandler.postDelayed(autoStopRunnable, 10 * 60 * 1000L);
+    }
+
+    private void requestAlarmAudioFocus() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    AudioAttributes aa = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build();
+                    android.media.AudioFocusRequest focusRequest = new android.media.AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                        .setAudioAttributes(aa)
+                        .setAcceptsDelayedFocusGain(true)
+                        .setOnAudioFocusChangeListener(focusChange -> {})
+                        .build();
+                    am.requestAudioFocus(focusRequest);
+                } else {
+                    am.requestAudioFocus(null, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void ensureMaxAlarmVolume() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
+                int curVol = am.getStreamVolume(AudioManager.STREAM_ALARM);
+                if (curVol < (int)(maxVol * 0.75f)) {
+                    am.setStreamVolume(AudioManager.STREAM_ALARM, Math.max(1, (int)(maxVol * 0.85f)), 0);
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     private void startAudioPlayback() {
@@ -275,8 +321,8 @@ public class AlarmService extends Service {
                 android.content.res.AssetFileDescriptor afd = getResources().openRawResourceFd(R.raw.alarm_twin_bell);
                 if (afd != null) {
                     mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-                    afd.close();
                     mediaPlayer.prepare();
+                    afd.close(); // Close strictly AFTER prepare
                     prepared = true;
                 }
             } catch (Exception ex) {
@@ -392,6 +438,15 @@ public class AlarmService extends Service {
         stopAudioPlayback();
         stopVibration();
 
+        // Release mediaSession
+        if (mediaSession != null) {
+            try {
+                mediaSession.setActive(false);
+                mediaSession.release();
+                mediaSession = null;
+            } catch (Exception ignored) {}
+        }
+
         // Release wake lock
         try {
             if (wakeLock != null && wakeLock.isHeld()) {
@@ -417,6 +472,14 @@ public class AlarmService extends Service {
     public static void createAlarmChannel(Context context) {
         if (context == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+
+            // Delete legacy channel if present to clear any stale silenced preferences
+            try {
+                nm.deleteNotificationChannel("ntools_ringing_alarms");
+            } catch (Exception ignored) {}
+
             CharSequence name = "Active Ringing Alarms";
             String description = "High-priority lockscreen notifications for ringing alarms";
             int importance = NotificationManager.IMPORTANCE_HIGH;
@@ -438,12 +501,49 @@ public class AlarmService extends Service {
                 soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
             }
             channel.setSound(soundUri, audioAttributes);
+            nm.createNotificationChannel(channel);
 
-            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (notificationManager != null) {
-                notificationManager.createNotificationChannel(channel);
-            }
+            // Also create Missed Alarm Channel
+            NotificationChannel missedChannel = new NotificationChannel(
+                MISSED_ALARM_CHANNEL_ID,
+                "Missed Alarms",
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            missedChannel.setDescription("Notifications when an alarm was not turned off in time");
+            missedChannel.setShowBadge(true);
+            nm.createNotificationChannel(missedChannel);
         }
+    }
+
+    public static void showMissedAlarmNotification(Context context, String label, String time) {
+        try {
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+            createAlarmChannel(context);
+
+            Intent openIntent = new Intent(context, MainActivity.class);
+            openIntent.putExtra("route", "clock");
+            openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent openPI = PendingIntent.getActivity(context, MISSED_NOTIFICATION_ID, openIntent, flags);
+
+            String title = (label != null && !label.isEmpty() && !label.equalsIgnoreCase("Alarm"))
+                ? "⏰ Missed Alarm: " + label
+                : "⏰ Missed Alarm";
+            String subtitle = "Scheduled for " + (time != null ? time : "earlier");
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, MISSED_ALARM_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_alarm)
+                .setContentTitle(title)
+                .setContentText(subtitle)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setAutoCancel(true)
+                .setContentIntent(openPI);
+
+            nm.notify(MISSED_NOTIFICATION_ID, builder.build());
+        } catch (Exception ignored) {}
     }
 
     @Override

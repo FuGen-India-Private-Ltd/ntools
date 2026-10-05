@@ -37,6 +37,7 @@ export interface AppWidgetSyncPluginInterface {
   openNotificationSettings(): Promise<{ success: boolean }>;
   requestNotificationPermission(): Promise<{ success: boolean }>;
   requestAudioPermission(): Promise<{ success: boolean }>;
+  openAutoStartSettings(): Promise<{ success: boolean }>;
 }
 
 const AppWidgetSync = registerPlugin<AppWidgetSyncPluginInterface>('AppWidgetSyncPlugin');
@@ -353,6 +354,17 @@ export async function requestAudioPermissionNative(): Promise<{ granted: boolean
   }
   return { granted: true };
 }
+
+export async function openAutoStartSettingsNative(): Promise<void> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await AppWidgetSync.openAutoStartSettings();
+    }
+  } catch (e) {
+    console.debug('openAutoStartSettings error:', e);
+  }
+}
+
 
 
 

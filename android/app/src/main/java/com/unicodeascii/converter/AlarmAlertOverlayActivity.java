@@ -175,13 +175,25 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
                 localMediaPlayer.setAudioAttributes(audioAttributes);
                 localMediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
 
+                // Ensure device Alarm Stream Volume is sufficiently loud
+                try {
+                    AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                    if (am != null) {
+                        int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
+                        int curVol = am.getStreamVolume(AudioManager.STREAM_ALARM);
+                        if (curVol < (int)(maxVol * 0.75f)) {
+                            am.setStreamVolume(AudioManager.STREAM_ALARM, Math.max(1, (int)(maxVol * 0.85f)), 0);
+                        }
+                    }
+                } catch (Exception ignored) {}
+
                 boolean prepared = false;
                 try {
                     android.content.res.AssetFileDescriptor afd = getResources().openRawResourceFd(R.raw.alarm_twin_bell);
                     if (afd != null) {
                         localMediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-                        afd.close();
                         localMediaPlayer.prepare();
+                        afd.close(); // Close strictly AFTER prepare
                         prepared = true;
                     }
                 } catch (Exception ignored) {}
