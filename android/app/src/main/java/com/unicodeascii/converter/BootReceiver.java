@@ -110,6 +110,12 @@ public class BootReceiver extends BroadcastReceiver {
 
                         String skippedDate = prefs.getString(id + "_skipped_date", "");
                         SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                        String todayDateStr = sdfDate.format(new Date(now));
+                        if (!skippedDate.isEmpty() && skippedDate.compareTo(todayDateStr) < 0) {
+                            // Purge expired skipped date older than today so it never lingers
+                            prefs.edit().remove(id + "_skipped_date").commit();
+                            skippedDate = "";
+                        }
 
                         if (daysList.isEmpty()) {
                             // If time has passed today (<= now), schedule for tomorrow
@@ -289,7 +295,8 @@ public class BootReceiver extends BroadcastReceiver {
             openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
-            PendingIntent openPI = PendingIntent.getActivity(context, 90011, openIntent, flags);
+            int openReq = Math.abs(("upcoming_open_" + alarmId).hashCode());
+            PendingIntent openPI = PendingIntent.getActivity(context, openReq, openIntent, flags);
 
             Intent dismissIntent = new Intent(context, AlarmReceiver.class);
             dismissIntent.setAction(AlarmReceiver.ACTION_DISMISS_UPCOMING);
@@ -297,7 +304,8 @@ public class BootReceiver extends BroadcastReceiver {
             dismissIntent.setPackage(context.getPackageName());
             dismissIntent.putExtra("alarmId", alarmId);
             dismissIntent.putExtra("triggerAt", triggerAt);
-            PendingIntent dismissPI = PendingIntent.getBroadcast(context, 90012, dismissIntent, flags);
+            int dismissReq = Math.abs(("upcoming_dismiss_" + alarmId).hashCode());
+            PendingIntent dismissPI = PendingIntent.getBroadcast(context, dismissReq, dismissIntent, flags);
 
             boolean hasLabel = (label != null && !label.trim().isEmpty() && !label.equalsIgnoreCase("Alarm"));
             String alarmTitle = hasLabel

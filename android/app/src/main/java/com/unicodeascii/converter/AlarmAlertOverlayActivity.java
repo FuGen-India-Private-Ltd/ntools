@@ -7,8 +7,17 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Vibrator;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -27,6 +36,11 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
     private String alarmLabel;
     private String alarmTime;
     private String alarmSound;
+
+    private MediaPlayer localMediaPlayer = null;
+    private Ringtone localFallbackRingtone = null;
+    private Vibrator localVibrator = null;
+    private Handler fallbackAudioHandler = new Handler(Looper.getMainLooper());
 
     private FrameLayout sliderTrack;
     private FrameLayout sliderCircle;
@@ -81,6 +95,7 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
             if (!AlarmService.isRinging()) {
                 AlarmService.startAlarm(this, alarmId, alarmLabel, alarmTime, alarmSound);
             }
+            fallbackAudioHandler.postDelayed(this::startLocalFallbackSoundAndVibration, 600L);
 
             setupSlideToDismiss();
 
@@ -148,7 +163,103 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         });
     }
 
+    private void startLocalFallbackSoundAndVibration() {
+        if (AlarmService.isRinging() || isDismissed) return;
+        try {
+            if (localMediaPlayer == null && localFallbackRingtone == null) {
+                localMediaPlayer = new MediaPlayer();
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+                localMediaPlayer.setAudioAttributes(audioAttributes);
+                localMediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
+
+                boolean prepared = false;
+                try {
+                    android.content.res.AssetFileDescriptor afd = getResources().openRawResourceFd(R.raw.alarm_twin_bell);
+                    if (afd != null) {
+                        localMediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+                        afd.close();
+                        localMediaPlayer.prepare();
+                        prepared = true;
+                    }
+                } catch (Exception ignored) {}
+
+                if (!prepared) {
+                    try {
+                        Uri alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                        if (alertUri == null) alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                        if (alertUri != null) {
+                            localMediaPlayer.reset();
+                            localMediaPlayer.setAudioAttributes(audioAttributes);
+                            localMediaPlayer.setDataSource(this, alertUri);
+                            localMediaPlayer.prepare();
+                            prepared = true;
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                if (prepared) {
+                    localMediaPlayer.setLooping(true);
+                    localMediaPlayer.setVolume(1.0f, 1.0f);
+                    localMediaPlayer.start();
+                } else {
+                    Uri alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                    if (alertUri != null) {
+                        localFallbackRingtone = RingtoneManager.getRingtone(this, alertUri);
+                        if (localFallbackRingtone != null) {
+                            localFallbackRingtone.play();
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            if (localVibrator == null) {
+                localVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (localVibrator != null && localVibrator.hasVibrator()) {
+                    long[] pattern = {0, 800, 400, 800, 400, 800};
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        localVibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0));
+                    } else {
+                        localVibrator.vibrate(pattern, 0);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void stopLocalFallbackSoundAndVibration() {
+        if (fallbackAudioHandler != null) {
+            fallbackAudioHandler.removeCallbacksAndMessages(null);
+        }
+        try {
+            if (localMediaPlayer != null) {
+                if (localMediaPlayer.isPlaying()) localMediaPlayer.stop();
+                localMediaPlayer.reset();
+                localMediaPlayer.release();
+                localMediaPlayer = null;
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (localFallbackRingtone != null) {
+                localFallbackRingtone.stop();
+                localFallbackRingtone = null;
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (localVibrator != null) {
+                localVibrator.cancel();
+                localVibrator = null;
+            }
+        } catch (Exception ignored) {}
+    }
+
     private void performDismiss() {
+        stopLocalFallbackSoundAndVibration();
+
         // Stop foreground service ringing & vibration
         AlarmService.stopAlarm(this);
         cancelNotification();
@@ -189,6 +300,7 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
     }
 
     private void performSnooze(long delayMillis) {
+        stopLocalFallbackSoundAndVibration();
         AlarmService.stopAlarm(this);
         cancelNotification();
         snoozeAlarm(delayMillis);
@@ -348,6 +460,7 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        stopLocalFallbackSoundAndVibration();
         if (activeOverlayInstance == this) {
             activeOverlayInstance = null;
         }

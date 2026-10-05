@@ -13,6 +13,9 @@ import android.widget.Toast;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import android.net.Uri;
+import androidx.core.app.NotificationCompat;
+
 public class AlarmReceiver extends BroadcastReceiver {
 
     public static final String ACTION_ALARM_TRIGGER = "com.unicodeascii.converter.ACTION_ALARM_TRIGGER";
@@ -21,6 +24,38 @@ public class AlarmReceiver extends BroadcastReceiver {
     public static final String ACTION_DISMISS_UPCOMING = "com.unicodeascii.converter.ACTION_DISMISS_UPCOMING";
     public static final String ACTION_SHOW_UPCOMING = "com.unicodeascii.converter.ACTION_SHOW_UPCOMING";
     public static final int UPCOMING_SCHEDULE_REQUEST_CODE = 90020;
+
+    public static PowerManager.WakeLock sCpuWakeLock = null;
+
+    public static synchronized void acquireWakeLock(Context context) {
+        if (sCpuWakeLock != null && sCpuWakeLock.isHeld()) {
+            return;
+        }
+        try {
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                sCpuWakeLock = pm.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK |
+                    PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                    PowerManager.ON_AFTER_RELEASE,
+                    "ntools:alarm_receiver_wake"
+                );
+                sCpuWakeLock.setReferenceCounted(false);
+                sCpuWakeLock.acquire(60 * 1000L); // 60s guarantee
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static synchronized void releaseWakeLock() {
+        try {
+            if (sCpuWakeLock != null && sCpuWakeLock.isHeld()) {
+                sCpuWakeLock.release();
+                sCpuWakeLock = null;
+            }
+        } catch (Exception ignored) {}
+    }
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -65,7 +100,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             return;
         }
 
-        // Case 5: Actual Alarm Rings -> Start Foreground AlarmService
+        // Case 5: Actual Alarm Rings -> Start Multi-layer Alarm Wakeup and Foreground AlarmService
         handleActualAlarmTrigger(context, alarmId, alarmLabel, alarmTime, alarmSound);
     }
 
@@ -73,22 +108,104 @@ public class AlarmReceiver extends BroadcastReceiver {
         // Cancel the upcoming notification as this alarm is actively ringing
         BootReceiver.cancelUpcomingAlarmNotification(context);
 
-        // 1. Acquire 30-second CPU WakeLock to guarantee device stays awake during service launch
+        // 1. Acquire static WakeLock to ensure device stays awake across process boundary
+        acquireWakeLock(context);
+
+        // 2. Ensure Alarm Notification Channel is created immediately
+        AlarmService.createAlarmChannel(context);
+
+        // 3. Prepare intent for AlarmAlertOverlayActivity
+        Intent overlayIntent = new Intent(context, AlarmAlertOverlayActivity.class);
+        overlayIntent.putExtra("alarmId", alarmId);
+        overlayIntent.putExtra("alarmLabel", alarmLabel);
+        overlayIntent.putExtra("alarmTime", alarmTime);
+        overlayIntent.putExtra("alarmSound", alarmSound);
+        overlayIntent.setFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK |
+            Intent.FLAG_ACTIVITY_CLEAR_TOP |
+            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+            Intent.FLAG_ACTIVITY_SINGLE_TOP
+        );
+
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) piFlags |= PendingIntent.FLAG_IMMUTABLE;
+
+        PendingIntent fullScreenPI = PendingIntent.getActivity(
+            context,
+            AlarmService.NOTIFICATION_ID,
+            overlayIntent,
+            piFlags
+        );
+
+        // 4. Directly post High-Priority Full-Screen Notification from Receiver
         try {
-            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-            if (pm != null) {
-                PowerManager.WakeLock wl = pm.newWakeLock(
-                    PowerManager.PARTIAL_WAKE_LOCK,
-                    "ntools:alarm_trigger_wake"
-                );
-                wl.acquire(30000); // 30 seconds
+            int dismissReqCode = Math.abs(("ring_dismiss_" + alarmId).hashCode());
+            int snoozeReqCode = Math.abs(("ring_snooze_" + alarmId).hashCode());
+
+            Intent dismissIntent = new Intent(context, AlarmReceiver.class);
+            dismissIntent.setAction(AlarmReceiver.ACTION_DISMISS_ALARM);
+            dismissIntent.setData(Uri.parse("ntools://alarm/dismiss/" + alarmId));
+            dismissIntent.setPackage(context.getPackageName());
+            dismissIntent.putExtra("alarmId", alarmId);
+            PendingIntent dismissPI = PendingIntent.getBroadcast(context, dismissReqCode, dismissIntent, piFlags);
+
+            Intent snoozeIntent = new Intent(context, AlarmReceiver.class);
+            snoozeIntent.setAction(AlarmReceiver.ACTION_SNOOZE_ALARM);
+            snoozeIntent.setData(Uri.parse("ntools://alarm/snooze/" + alarmId));
+            snoozeIntent.setPackage(context.getPackageName());
+            snoozeIntent.putExtra("alarmId", alarmId);
+            snoozeIntent.putExtra("alarmLabel", alarmLabel);
+            snoozeIntent.putExtra("alarmTime", alarmTime);
+            snoozeIntent.putExtra("alarmSound", alarmSound);
+            PendingIntent snoozePI = PendingIntent.getBroadcast(context, snoozeReqCode, snoozeIntent, piFlags);
+
+            String title = (alarmLabel != null && !alarmLabel.isEmpty()) ? "⏰ " + alarmLabel : "⏰ Alarm Ringing";
+            String subtitle = "Scheduled for " + (alarmTime != null ? alarmTime : "now");
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, AlarmService.ALARM_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_alarm)
+                .setContentTitle(title)
+                .setContentText(subtitle)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .setContentIntent(fullScreenPI)
+                .setFullScreenIntent(fullScreenPI, true)
+                .addAction(R.drawable.ic_stat_alarm, "Turn Off", dismissPI)
+                .addAction(R.drawable.ic_stat_alarm, "Snooze (10m)", snoozePI);
+
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.notify(AlarmService.NOTIFICATION_ID, builder.build());
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // 2. Start robust, continuous Foreground Service for ringing audio + vibration + notification
-        AlarmService.startAlarm(context, alarmId, alarmLabel, alarmTime, alarmSound);
+        // 5. Directly launch the Overlay Activity from Receiver
+        try {
+            context.startActivity(overlayIntent);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // 6. Start robust Foreground Service for continuous audio playback and vibration
+        try {
+            AlarmService.startAlarm(context, alarmId, alarmLabel, alarmTime, alarmSound);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // 7. CRITICAL: Reschedule next occurrence with AlarmManager immediately!
+        // This ensures the system status bar alarm icon stays visible for the next cycle
+        // and repeating alarms remain active even if the user does not open the app.
+        try {
+            BootReceiver.rescheduleAllClockAlarms(context);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void handleDismissUpcomingAlarm(Context context, String alarmId, long triggerAt) {

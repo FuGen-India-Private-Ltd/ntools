@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -38,6 +39,7 @@ public class AlarmService extends Service {
     private static boolean isAlarmRinging = false;
 
     private MediaPlayer mediaPlayer = null;
+    private Ringtone fallbackRingtone = null;
     private Vibrator vibrator = null;
     private PowerManager.WakeLock wakeLock = null;
     private Handler autoStopHandler = new Handler(Looper.getMainLooper());
@@ -124,6 +126,9 @@ public class AlarmService extends Service {
     private void startAlarmExecution() {
         isAlarmRinging = true;
 
+        // Release bridge WakeLock from AlarmReceiver now that AlarmService has started
+        AlarmReceiver.releaseWakeLock();
+
         // 1. Acquire CPU WakeLock for up to 15 minutes while alarm is ringing
         try {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -139,7 +144,7 @@ public class AlarmService extends Service {
         }
 
         // 2. Ensure Notification Channel exists with USAGE_ALARM sound attributes
-        createAlarmChannel();
+        createAlarmChannel(this);
 
         // 3. Prepare Full-Screen Intent for AlarmAlertOverlayActivity
         Intent overlayIntent = new Intent(this, AlarmAlertOverlayActivity.class);
@@ -165,12 +170,15 @@ public class AlarmService extends Service {
         );
 
         // 4. Prepare Notification Action PendingIntents (Dismiss and Snooze)
+        int dismissReqCode = Math.abs(("ring_dismiss_" + currentAlarmId).hashCode());
+        int snoozeReqCode = Math.abs(("ring_snooze_" + currentAlarmId).hashCode());
+
         Intent dismissIntent = new Intent(this, AlarmReceiver.class);
         dismissIntent.setAction(AlarmReceiver.ACTION_DISMISS_ALARM);
         dismissIntent.setData(Uri.parse("ntools://alarm/dismiss/" + currentAlarmId));
         dismissIntent.setPackage(getPackageName());
         dismissIntent.putExtra("alarmId", currentAlarmId);
-        PendingIntent dismissPI = PendingIntent.getBroadcast(this, NOTIFICATION_ID + 10, dismissIntent, piFlags);
+        PendingIntent dismissPI = PendingIntent.getBroadcast(this, dismissReqCode, dismissIntent, piFlags);
 
         Intent snoozeIntent = new Intent(this, AlarmReceiver.class);
         snoozeIntent.setAction(AlarmReceiver.ACTION_SNOOZE_ALARM);
@@ -180,7 +188,7 @@ public class AlarmService extends Service {
         snoozeIntent.putExtra("alarmLabel", currentAlarmLabel);
         snoozeIntent.putExtra("alarmTime", currentAlarmTime);
         snoozeIntent.putExtra("alarmSound", currentAlarmSound);
-        PendingIntent snoozePI = PendingIntent.getBroadcast(this, NOTIFICATION_ID + 20, snoozeIntent, piFlags);
+        PendingIntent snoozePI = PendingIntent.getBroadcast(this, snoozeReqCode, snoozeIntent, piFlags);
 
         // 5. Build Ongoing High-Priority Foreground Notification
         String title = (currentAlarmLabel != null && !currentAlarmLabel.isEmpty())
@@ -254,33 +262,76 @@ public class AlarmService extends Service {
     private void startAudioPlayback() {
         stopAudioPlayback();
         try {
-            // First priority: bundled loud mechanical twin-bell sound
-            try {
-                mediaPlayer = MediaPlayer.create(this, R.raw.alarm_twin_bell);
-            } catch (Exception ignored) {}
+            mediaPlayer = new MediaPlayer();
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+            mediaPlayer.setAudioAttributes(audioAttributes);
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
 
-            // Fallback: System default alarm tone
-            if (mediaPlayer == null) {
+            boolean prepared = false;
+            try {
+                android.content.res.AssetFileDescriptor afd = getResources().openRawResourceFd(R.raw.alarm_twin_bell);
+                if (afd != null) {
+                    mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+                    afd.close();
+                    mediaPlayer.prepare();
+                    prepared = true;
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
+            if (!prepared) {
+                try {
+                    Uri alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                    if (alertUri == null) {
+                        alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                    }
+                    if (alertUri != null) {
+                        mediaPlayer.reset();
+                        mediaPlayer.setAudioAttributes(audioAttributes);
+                        mediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
+                        mediaPlayer.setDataSource(this, alertUri);
+                        mediaPlayer.prepare();
+                        prepared = true;
+                    }
+                } catch (Exception ex2) {
+                    ex2.printStackTrace();
+                }
+            }
+
+            if (prepared) {
+                mediaPlayer.setLooping(true);
+                mediaPlayer.setVolume(1.0f, 1.0f);
+                mediaPlayer.start();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Secondary fallback: RingtoneManager if MediaPlayer fails or cannot play
+        try {
+            if (mediaPlayer == null || !mediaPlayer.isPlaying()) {
                 Uri alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
                 if (alertUri == null) {
                     alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
                 }
                 if (alertUri != null) {
-                    mediaPlayer = new MediaPlayer();
-                    mediaPlayer.setDataSource(this, alertUri);
-                    mediaPlayer.prepare();
+                    fallbackRingtone = RingtoneManager.getRingtone(this, alertUri);
+                    if (fallbackRingtone != null) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            fallbackRingtone.setAudioAttributes(new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_ALARM)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .build());
+                        } else {
+                            fallbackRingtone.setStreamType(AudioManager.STREAM_ALARM);
+                        }
+                        fallbackRingtone.play();
+                    }
                 }
-            }
-
-            if (mediaPlayer != null) {
-                AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build();
-                mediaPlayer.setAudioAttributes(audioAttributes);
-                mediaPlayer.setLooping(true);
-                mediaPlayer.setVolume(1.0f, 1.0f);
-                mediaPlayer.start();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -296,6 +347,12 @@ public class AlarmService extends Service {
                 mediaPlayer.reset();
                 mediaPlayer.release();
                 mediaPlayer = null;
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (fallbackRingtone != null) {
+                fallbackRingtone.stop();
+                fallbackRingtone = null;
             }
         } catch (Exception ignored) {}
     }
@@ -357,7 +414,8 @@ public class AlarmService extends Service {
         stopSelf();
     }
 
-    private void createAlarmChannel() {
+    public static void createAlarmChannel(Context context) {
+        if (context == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = "Active Ringing Alarms";
             String description = "High-priority lockscreen notifications for ringing alarms";
@@ -381,7 +439,7 @@ public class AlarmService extends Service {
             }
             channel.setSound(soundUri, audioAttributes);
 
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (notificationManager != null) {
                 notificationManager.createNotificationChannel(channel);
             }
