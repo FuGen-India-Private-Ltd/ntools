@@ -28,33 +28,38 @@ public class AlarmReceiver extends BroadcastReceiver {
     public static PowerManager.WakeLock sCpuWakeLock = null;
     public static PowerManager.WakeLock sScreenWakeLock = null;
 
+    public static android.media.MediaPlayer sReceiverMediaPlayer = null;
+    public static android.media.Ringtone sReceiverRingtone = null;
+    public static android.os.Vibrator sReceiverVibrator = null;
+
     public static synchronized void acquireWakeLock(Context context) {
+        if (context == null) return;
         try {
             PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
-                // 1. CPU Wakelock to keep processor active
+                // 1. CPU Wakelock to keep processor active (strictly PARTIAL_WAKE_LOCK)
                 if (sCpuWakeLock == null || !sCpuWakeLock.isHeld()) {
                     sCpuWakeLock = pm.newWakeLock(
-                        PowerManager.PARTIAL_WAKE_LOCK |
-                        PowerManager.ACQUIRE_CAUSES_WAKEUP |
-                        PowerManager.ON_AFTER_RELEASE,
+                        PowerManager.PARTIAL_WAKE_LOCK,
                         "ntools:alarm_receiver_cpu_wake"
                     );
                     sCpuWakeLock.setReferenceCounted(false);
-                    sCpuWakeLock.acquire(60 * 1000L); // 60s guarantee
+                    sCpuWakeLock.acquire(10 * 60 * 1000L); // 10 minutes maximum duration
                 }
 
                 // 2. Screen Wakelock to immediately illuminate the display
-                if (sScreenWakeLock == null || !sScreenWakeLock.isHeld()) {
-                    sScreenWakeLock = pm.newWakeLock(
-                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
-                        PowerManager.ACQUIRE_CAUSES_WAKEUP |
-                        PowerManager.ON_AFTER_RELEASE,
-                        "ntools:alarm_receiver_screen_wake"
-                    );
-                    sScreenWakeLock.setReferenceCounted(false);
-                    sScreenWakeLock.acquire(15 * 1000L); // 15s display illumination
-                }
+                try {
+                    if (sScreenWakeLock == null || !sScreenWakeLock.isHeld()) {
+                        sScreenWakeLock = pm.newWakeLock(
+                            PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
+                            PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                            PowerManager.ON_AFTER_RELEASE,
+                            "ntools:alarm_receiver_screen_wake"
+                        );
+                        sScreenWakeLock.setReferenceCounted(false);
+                        sScreenWakeLock.acquire(15 * 1000L); // 15s display illumination
+                    }
+                } catch (Exception ignored) {}
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -72,6 +77,114 @@ public class AlarmReceiver extends BroadcastReceiver {
             if (sScreenWakeLock != null && sScreenWakeLock.isHeld()) {
                 sScreenWakeLock.release();
                 sScreenWakeLock = null;
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static synchronized void startReceiverPlayback(Context context) {
+        if (context == null) return;
+        if (AlarmService.isRinging()) return;
+
+        try {
+            if (sReceiverMediaPlayer == null && sReceiverRingtone == null) {
+                sReceiverMediaPlayer = new android.media.MediaPlayer();
+                android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+                sReceiverMediaPlayer.setAudioAttributes(audioAttributes);
+                sReceiverMediaPlayer.setAudioStreamType(android.media.AudioManager.STREAM_ALARM);
+
+                boolean prepared = false;
+                try {
+                    android.content.res.AssetFileDescriptor afd = context.getResources().openRawResourceFd(R.raw.alarm_twin_bell);
+                    if (afd != null) {
+                        sReceiverMediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+                        sReceiverMediaPlayer.prepare();
+                        afd.close();
+                        prepared = true;
+                    }
+                } catch (Exception ignored) {}
+
+                if (!prepared) {
+                    try {
+                        Uri alertUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM);
+                        if (alertUri == null) {
+                            alertUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
+                        }
+                        if (alertUri != null) {
+                            sReceiverMediaPlayer.reset();
+                            sReceiverMediaPlayer.setAudioAttributes(audioAttributes);
+                            sReceiverMediaPlayer.setAudioStreamType(android.media.AudioManager.STREAM_ALARM);
+                            sReceiverMediaPlayer.setDataSource(context, alertUri);
+                            sReceiverMediaPlayer.prepare();
+                            prepared = true;
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                if (prepared) {
+                    sReceiverMediaPlayer.setLooping(true);
+                    sReceiverMediaPlayer.setVolume(1.0f, 1.0f);
+                    sReceiverMediaPlayer.start();
+                } else {
+                    Uri alertUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM);
+                    if (alertUri == null) {
+                        alertUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
+                    }
+                    if (alertUri != null) {
+                        sReceiverRingtone = android.media.RingtoneManager.getRingtone(context, alertUri);
+                        if (sReceiverRingtone != null) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                sReceiverRingtone.setAudioAttributes(audioAttributes);
+                            } else {
+                                sReceiverRingtone.setStreamType(android.media.AudioManager.STREAM_ALARM);
+                            }
+                            sReceiverRingtone.play();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            if (sReceiverVibrator == null) {
+                sReceiverVibrator = (android.os.Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+                if (sReceiverVibrator != null && sReceiverVibrator.hasVibrator()) {
+                    long[] pattern = {0, 800, 400, 800, 400, 800};
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        sReceiverVibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0));
+                    } else {
+                        sReceiverVibrator.vibrate(pattern, 0);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static synchronized void stopReceiverPlayback() {
+        try {
+            if (sReceiverMediaPlayer != null) {
+                if (sReceiverMediaPlayer.isPlaying()) {
+                    sReceiverMediaPlayer.stop();
+                }
+                sReceiverMediaPlayer.reset();
+                sReceiverMediaPlayer.release();
+                sReceiverMediaPlayer = null;
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (sReceiverRingtone != null) {
+                sReceiverRingtone.stop();
+                sReceiverRingtone = null;
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (sReceiverVibrator != null) {
+                sReceiverVibrator.cancel();
+                sReceiverVibrator = null;
             }
         } catch (Exception ignored) {}
     }
@@ -124,20 +237,32 @@ public class AlarmReceiver extends BroadcastReceiver {
     }
 
     private void handleActualAlarmTrigger(Context context, String alarmId, String alarmLabel, String alarmTime, String alarmSound) {
+        final PendingResult pendingResult = goAsync();
+
         // Cancel the upcoming notification as this alarm is actively ringing
         BootReceiver.cancelUpcomingAlarmNotification(context);
 
         // 1. Acquire static WakeLock to ensure device stays awake across process boundary
         acquireWakeLock(context);
 
-        // 2. Ensure Alarm Notification Channel is created immediately
+        // 2. Immediately start failover audio playback and vibration right in the receiver process
+        startReceiverPlayback(context);
+
+        // 3. Ensure Alarm Notification Channel is created immediately
         AlarmService.createAlarmChannel(context);
 
-        // 3. Prepare intent for AlarmAlertOverlayActivity
+        // 4. Prepare intent for AlarmAlertOverlayActivity
         Intent overlayIntent = new Intent(context, AlarmAlertOverlayActivity.class);
         overlayIntent.putExtra("alarmId", alarmId);
         overlayIntent.putExtra("alarmLabel", alarmLabel);
         overlayIntent.putExtra("alarmTime", alarmTime);
+        overlayIntent.putExtra("alarmSound", alarmSound);
+        overlayIntent.setFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK |
+            Intent.FLAG_ACTIVITY_CLEAR_TOP |
+            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+            Intent.FLAG_ACTIVITY_SINGLE_TOP
+        );
         overlayIntent.putExtra("alarmSound", alarmSound);
         overlayIntent.setFlags(
             Intent.FLAG_ACTIVITY_NEW_TASK |
@@ -225,6 +350,13 @@ public class AlarmReceiver extends BroadcastReceiver {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        // 8. Safely finish goAsync PendingResult after 5 seconds to guarantee process foreground state during transition
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            try {
+                pendingResult.finish();
+            } catch (Exception ignored) {}
+        }, 5000L);
     }
 
     private void handleDismissUpcomingAlarm(Context context, String alarmId, long triggerAt) {
@@ -283,11 +415,15 @@ public class AlarmReceiver extends BroadcastReceiver {
 
     private void handleDismissRingingAlarm(Context context, String alarmId) {
         try {
-            // 1. Stop foreground service audio and vibration
+            // 1. Stop receiver-level audio/vibration and release wake locks
+            stopReceiverPlayback();
+            releaseWakeLock();
+
+            // 2. Stop foreground service audio and vibration
             AlarmService.stopAlarm(context);
             AlarmAlertOverlayActivity.dismissActiveOverlay();
 
-            // 2. Cancel ringing notification (1001) and any fallback IDs
+            // 3. Cancel ringing notification (1001) and any fallback IDs
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.cancel(AlarmService.NOTIFICATION_ID);
@@ -296,10 +432,10 @@ public class AlarmReceiver extends BroadcastReceiver {
                 }
             }
 
-            // 3. If one-time alarm (no repeating days), disable it in saved preferences
+            // 4. If one-time alarm (no repeating days), disable it in saved preferences
             disableOneTimeAlarm(context, alarmId);
 
-            // 4. Auto-reschedule recurring alarms for next cycle
+            // 5. Auto-reschedule recurring alarms for next cycle
             BootReceiver.rescheduleAllClockAlarms(context);
 
             MainActivity.dispatchJsEvent("alarms-updated");
@@ -311,11 +447,15 @@ public class AlarmReceiver extends BroadcastReceiver {
 
     private void handleSnoozeRingingAlarm(Context context, String alarmId, String alarmLabel, String alarmTime, String alarmSound) {
         try {
-            // 1. Stop current ringing
+            // 1. Stop receiver-level audio/vibration and release wake locks
+            stopReceiverPlayback();
+            releaseWakeLock();
+
+            // 2. Stop current ringing
             AlarmService.stopAlarm(context);
             AlarmAlertOverlayActivity.dismissActiveOverlay();
 
-            // 2. Cancel ringing notification (1001)
+            // 3. Cancel ringing notification (1001)
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.cancel(AlarmService.NOTIFICATION_ID);
@@ -361,7 +501,11 @@ public class AlarmReceiver extends BroadcastReceiver {
                         }
                     } catch (Exception fallback) {
                         try {
-                            am.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                            } else {
+                                am.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                            }
                         } catch (Exception ignored) {}
                     }
                 }

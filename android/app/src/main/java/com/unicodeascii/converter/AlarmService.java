@@ -214,15 +214,24 @@ public class AlarmService extends Service {
             .addAction(R.drawable.ic_stat_alarm, "Snooze (10m)", snoozePI);
 
         Notification notification = builder.build();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-            );
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                );
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } catch (Exception fgEx) {
+            try {
+                startForeground(NOTIFICATION_ID, notification);
+            } catch (Exception ignored) {}
         }
+
+        // Silence the receiver failover playback now that AlarmService has successfully taken over
+        AlarmReceiver.stopReceiverPlayback();
 
         // 6. Active MediaSession for Android 14 FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK compliance
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -437,6 +446,7 @@ public class AlarmService extends Service {
 
         stopAudioPlayback();
         stopVibration();
+        AlarmReceiver.stopReceiverPlayback();
 
         // Release mediaSession
         if (mediaSession != null) {

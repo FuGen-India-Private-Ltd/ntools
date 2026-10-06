@@ -347,8 +347,25 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         if (sliderHint != null) {
             sliderHint.setAlpha(1f);
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+            KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            if (km != null) {
+                km.requestDismissKeyguard(this, null);
+            }
+        }
         if (!AlarmService.isRinging()) {
             AlarmService.startAlarm(this, alarmId, alarmLabel, alarmTime, alarmSound);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
         }
     }
 
@@ -422,19 +439,37 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
 
-        PendingIntent pi = PendingIntent.getBroadcast(this, (alarmId + "_snooze").hashCode(), intent, flags);
+        PendingIntent pi = PendingIntent.getBroadcast(this, Math.abs((alarmId + "_snooze").hashCode()), intent, flags);
         long triggerAt = System.currentTimeMillis() + delayMillis;
 
         Intent showIntent = new Intent(this, MainActivity.class);
         showIntent.putExtra("route", "clock");
-        PendingIntent showPI = PendingIntent.getActivity(this, (alarmId + "_snooze_show").hashCode(), showIntent, flags);
+        PendingIntent showPI = PendingIntent.getActivity(this, Math.abs((alarmId + "_snooze_show").hashCode()), showIntent, flags);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAt, showPI), pi);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
-        } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAt, showPI), pi);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+            }
+        } catch (SecurityException se) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                } else {
+                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                }
+            } catch (Exception seFallback) {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                    } else {
+                        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                    }
+                } catch (Exception ignored) {}
+            }
         }
 
         try {
@@ -443,31 +478,7 @@ public class AlarmAlertOverlayActivity extends AppCompatActivity {
     }
 
     private void disableOneTimeAlarm(String alarmId) {
-        if (alarmId == null) return;
-        try {
-            SharedPreferences prefs = getSharedPreferences(AppWidgetSyncPlugin.PREFS_NAME, Context.MODE_PRIVATE);
-            String alarmsJsonStr = prefs.getString(AppWidgetSyncPlugin.KEY_ALARMS, "[]");
-            JSONArray arr = new JSONArray(alarmsJsonStr);
-            boolean modified = false;
-
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject alarm = arr.getJSONObject(i);
-                String id = alarm.optString("id", "");
-                if (id.equals(alarmId)) {
-                    JSONArray daysArr = alarm.optJSONArray("days");
-                    if (daysArr == null || daysArr.length() == 0) {
-                        alarm.put("isEnabled", false);
-                        modified = true;
-                    }
-                    break;
-                }
-            }
-
-            if (modified) {
-                prefs.edit().putString(AppWidgetSyncPlugin.KEY_ALARMS, arr.toString()).apply();
-                MainActivity.dispatchJsEvent("alarms-updated");
-            }
-        } catch (Exception ignored) {}
+        AlarmReceiver.disableOneTimeAlarm(this, alarmId);
     }
 
     @Override

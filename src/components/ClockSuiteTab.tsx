@@ -37,6 +37,7 @@ import {
   requestNotificationPermissionNative,
   openNotificationSettingsNative,
   openAutoStartSettingsNative,
+  requestFullScreenIntentPermissionNative,
 } from '../lib/widgetSyncBridge';
 import {
   Clock as ClockIcon,
@@ -233,6 +234,9 @@ export function ClockSuiteTab() {
       }
       if (!perms.batteryExempt) {
         await requestBatteryOptimizationExemptionNative();
+      }
+      if (perms.fullScreenIntent === false) {
+        await requestFullScreenIntentPermissionNative();
       }
     } catch (e) {
       console.debug('Alarm permissions check notice:', e);

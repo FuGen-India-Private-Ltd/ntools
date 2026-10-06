@@ -31,6 +31,7 @@ export interface AppWidgetSyncPluginInterface {
     overlay: boolean;
     notifications: boolean;
     audioRecord: boolean;
+    fullScreenIntent?: boolean;
     allEssentialGranted: boolean;
   }>;
   checkNotificationPermission(): Promise<{ granted: boolean }>;
@@ -38,6 +39,8 @@ export interface AppWidgetSyncPluginInterface {
   requestNotificationPermission(): Promise<{ success: boolean }>;
   requestAudioPermission(): Promise<{ success: boolean }>;
   openAutoStartSettings(): Promise<{ success: boolean }>;
+  checkFullScreenIntentPermission(): Promise<{ granted: boolean }>;
+  requestFullScreenIntentPermission(): Promise<{ success: boolean }>;
 }
 
 const AppWidgetSync = registerPlugin<AppWidgetSyncPluginInterface>('AppWidgetSyncPlugin');
@@ -290,6 +293,7 @@ export async function checkAllStartupPermissionsNative(): Promise<{
   overlay: boolean;
   notifications: boolean;
   audioRecord: boolean;
+  fullScreenIntent?: boolean;
   allEssentialGranted: boolean;
 }> {
   try {
@@ -305,6 +309,7 @@ export async function checkAllStartupPermissionsNative(): Promise<{
     overlay: true,
     notifications: true,
     audioRecord: true,
+    fullScreenIntent: true,
     allEssentialGranted: true,
   };
 }
@@ -363,6 +368,30 @@ export async function openAutoStartSettingsNative(): Promise<void> {
   } catch (e) {
     console.debug('openAutoStartSettings error:', e);
   }
+}
+
+export async function checkFullScreenIntentPermissionNative(): Promise<boolean> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const res = await AppWidgetSync.checkFullScreenIntentPermission();
+      return !!res.granted;
+    }
+  } catch (e) {
+    console.debug('checkFullScreenIntentPermission error:', e);
+  }
+  return true;
+}
+
+export async function requestFullScreenIntentPermissionNative(): Promise<{ success: boolean }> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const res = await AppWidgetSync.requestFullScreenIntentPermission();
+      return { success: !!res.success };
+    }
+  } catch (e) {
+    console.debug('requestFullScreenIntentPermission error:', e);
+  }
+  return { success: true };
 }
 
 

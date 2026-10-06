@@ -194,7 +194,11 @@ public class BootReceiver extends BroadcastReceiver {
                                 }
                             } catch (Exception seFallback) {
                                 try {
-                                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                                    } else {
+                                        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                                    }
                                 } catch (Exception ignored) {}
                             }
                         }
@@ -451,7 +455,11 @@ public class BootReceiver extends BroadcastReceiver {
                     }
                 } catch (SecurityException se) {
                     try {
-                        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                        } else {
+                            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                        }
                     } catch (Exception ignored) {}
                 }
             }
@@ -494,7 +502,11 @@ public class BootReceiver extends BroadcastReceiver {
                 }
             } catch (SecurityException se) {
                 try {
-                    alarmManager.set(AlarmManager.RTC_WAKEUP, morningCal.getTimeInMillis(), briefingPI);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, morningCal.getTimeInMillis(), briefingPI);
+                    } else {
+                        alarmManager.set(AlarmManager.RTC_WAKEUP, morningCal.getTimeInMillis(), briefingPI);
+                    }
                 } catch (Exception ignored) {}
             }
 
@@ -545,7 +557,11 @@ public class BootReceiver extends BroadcastReceiver {
                             }
                         } catch (SecurityException se) {
                             try {
-                                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerPrior, piPrior);
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerPrior, piPrior);
+                                } else {
+                                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerPrior, piPrior);
+                                }
                             } catch (Exception ignored) {}
                         }
                     }
@@ -588,7 +604,11 @@ public class BootReceiver extends BroadcastReceiver {
                             }
                         } catch (SecurityException se) {
                             try {
-                                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerDay, piDay);
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerDay, piDay);
+                                } else {
+                                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerDay, piDay);
+                                }
                             } catch (Exception ignored) {}
                         }
                     }

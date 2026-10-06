@@ -292,6 +292,7 @@ public class AppWidgetSyncPlugin extends Plugin {
         boolean notifications = true;
         boolean audioRecord = true;
 
+        boolean fullScreenIntent = true;
         if (ctx != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
@@ -306,6 +307,12 @@ public class AppWidgetSyncPlugin extends Plugin {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notifications = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) {
+                    fullScreenIntent = nm.canUseFullScreenIntent();
+                }
+            }
             try {
                 androidx.core.app.NotificationManagerCompat nm = androidx.core.app.NotificationManagerCompat.from(ctx);
                 notifications = notifications && nm.areNotificationsEnabled();
@@ -318,8 +325,55 @@ public class AppWidgetSyncPlugin extends Plugin {
         ret.put("overlay", overlay);
         ret.put("notifications", notifications);
         ret.put("audioRecord", audioRecord);
-        boolean allEssential = exactAlarm && batteryExempt && overlay && notifications && audioRecord;
+        ret.put("fullScreenIntent", fullScreenIntent);
+        boolean allEssential = exactAlarm && batteryExempt && overlay && notifications && audioRecord && fullScreenIntent;
         ret.put("allEssentialGranted", allEssential);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void checkFullScreenIntentPermission(PluginCall call) {
+        boolean canUse = true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Context ctx = getContext();
+            if (ctx != null) {
+                NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+                canUse = nm != null && nm.canUseFullScreenIntent();
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("granted", canUse);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void requestFullScreenIntentPermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Activity act = getActivity();
+            Context ctx = act != null ? act : getContext();
+            String pkg = ctx != null ? ctx.getPackageName() : "com.unicodeascii.converter";
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + pkg));
+                if (act != null) {
+                    act.startActivity(intent);
+                } else if (ctx != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    ctx.startActivity(intent);
+                }
+            } catch (Exception e) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg));
+                    if (act != null) {
+                        act.startActivity(intent);
+                    } else if (ctx != null) {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        ctx.startActivity(intent);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("success", true);
         call.resolve(ret);
     }
 

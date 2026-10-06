@@ -65,6 +65,15 @@ export function PdfEditorTab({ initialBlob, initialFileName, onClearInitial }: P
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  // Revoke previewUrl object URL on component unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   // Tools state
   const [activeTool, setActiveTool] = useState<'annotate' | 'watermark' | 'pages'>('annotate');
 

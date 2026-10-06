@@ -45,7 +45,7 @@
             android:turnScreenOn="true"
             android:showForAllUsers="true"
             android:launchMode="singleInstance"
-            android:exported="true" />
+            android:exported="false" />
 
         <!-- Task Reminder Overlay Dialog Activity -->
         <activity
