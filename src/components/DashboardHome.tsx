@@ -326,8 +326,14 @@ export const DashboardHome = React.memo(function DashboardHome({
     touchStartPosRef.current = null;
   }, []);
 
-  const handleTouchStart = useCallback(() => {
+  const dragRafRef = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isReordering) return;
+    const touch = e.touches[0];
+    if (touch) {
+      touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    }
     isLongPressTriggeredRef.current = false;
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
 
@@ -341,16 +347,12 @@ export const DashboardHome = React.memo(function DashboardHome({
   }, [isReordering]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (isReordering) return;
-    if (!touchStartPosRef.current) {
-      const touch = e.touches[0];
-      touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
-      return;
-    }
+    if (isReordering || !touchStartPosRef.current) return;
     const touch = e.touches[0];
+    if (!touch) return;
     const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
     const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
-    if (dx > 12 || dy > 12) {
+    if (dx > 8 || dy > 8) {
       clearLongPress();
     }
   }, [isReordering, clearLongPress]);
@@ -378,7 +380,7 @@ export const DashboardHome = React.memo(function DashboardHome({
     if (isReordering || !touchStartPosRef.current) return;
     const dx = Math.abs(e.clientX - touchStartPosRef.current.x);
     const dy = Math.abs(e.clientY - touchStartPosRef.current.y);
-    if (dx > 12 || dy > 12) {
+    if (dx > 8 || dy > 8) {
       clearLongPress();
     }
   }, [isReordering, clearLongPress]);
@@ -396,7 +398,7 @@ export const DashboardHome = React.memo(function DashboardHome({
     onNavigate(toolId);
   }, [isReordering, onNavigate]);
 
-  // Touch drag-and-drop while in reordering mode
+  // High-performance RAF-throttled touch drag-and-drop while in reordering mode
   const handleReorderTouchStart = useCallback((toolId: AppModule) => {
     if (!isReordering) return;
     setDraggedId(toolId);
@@ -410,35 +412,45 @@ export const DashboardHome = React.memo(function DashboardHome({
     if (!isReordering || !draggedId) return;
     const touch = e.touches[0];
     if (!touch) return;
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
 
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    const cardEl = el?.closest('[data-tool-id]') as HTMLElement | null;
-    if (!cardEl) return;
+    if (dragRafRef.current) return;
+    dragRafRef.current = requestAnimationFrame(() => {
+      dragRafRef.current = null;
+      const el = document.elementFromPoint(clientX, clientY);
+      const cardEl = el?.closest('[data-tool-id]') as HTMLElement | null;
+      if (!cardEl) return;
 
-    const targetId = cardEl.getAttribute('data-tool-id') as AppModule | null;
-    if (targetId && targetId !== touchDragTargetRef.current) {
-      setToolOrder((prev) => {
-        const fromIdx = prev.indexOf(draggedId);
-        const toIdx = prev.indexOf(targetId);
-        if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
-          const next = [...prev];
-          const [moved] = next.splice(fromIdx, 1);
-          next.splice(toIdx, 0, moved);
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-          } catch {}
-          touchDragTargetRef.current = targetId;
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            try { navigator.vibrate(20); } catch {}
+      const targetId = cardEl.getAttribute('data-tool-id') as AppModule | null;
+      if (targetId && targetId !== touchDragTargetRef.current) {
+        touchDragTargetRef.current = targetId;
+        setToolOrder((prev) => {
+          const fromIdx = prev.indexOf(draggedId);
+          const toIdx = prev.indexOf(targetId);
+          if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
+            const next = [...prev];
+            const [moved] = next.splice(fromIdx, 1);
+            next.splice(toIdx, 0, moved);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            } catch {}
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              try { navigator.vibrate(20); } catch {}
+            }
+            return next;
           }
-          return next;
-        }
-        return prev;
-      });
-    }
+          return prev;
+        });
+      }
+    });
   }, [isReordering, draggedId]);
 
   const handleReorderTouchEnd = useCallback(() => {
+    if (dragRafRef.current) {
+      cancelAnimationFrame(dragRafRef.current);
+      dragRafRef.current = null;
+    }
     setDraggedId(null);
     touchDragTargetRef.current = null;
   }, []);
@@ -652,10 +664,11 @@ export const DashboardHome = React.memo(function DashboardHome({
               onMouseMove={isReordering ? undefined : handleMouseMove}
               onMouseUp={isReordering ? undefined : handleMouseUp}
               onClick={() => handleCardClick(tool.id)}
-              className={`group select-none rounded-2xl sm:rounded-3xl p-3 sm:p-4 liquid-glass-card liquid-specular transition-all duration-150 transform-gpu flex flex-col justify-between min-h-[92px] sm:min-h-[105px] animate-fade-in relative ${
+              style={{ touchAction: isReordering ? 'none' : 'pan-y' }}
+              className={`group select-none rounded-2xl sm:rounded-3xl p-3 sm:p-4 liquid-glass-card liquid-specular transition-transform duration-100 transition-colors duration-100 transform-gpu flex flex-col justify-between min-h-[92px] sm:min-h-[105px] relative ${
                 isReordering
                   ? 'cursor-grab active:cursor-grabbing border-amber-500/40 bg-amber-500/[0.04] ring-1 ring-amber-500/30 shadow-md'
-                  : `cursor-pointer ${tool.borderColor} shadow-sm hover:shadow-xl ${tool.glowColor} hover:-translate-y-0.5 active:scale-[0.97]`
+                  : `cursor-pointer ${tool.borderColor} shadow-sm sm:hover:shadow-xl ${tool.glowColor} sm:hover:-translate-y-0.5 active:scale-[0.97]`
               } ${isCurrentlyDragged ? 'opacity-40 scale-95 ring-2 ring-amber-500' : ''}`}
             >
               {/* Card Header: Icon + Normal Arrow or Reordering Controls */}

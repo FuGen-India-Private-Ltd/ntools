@@ -70,7 +70,7 @@ export function FloatingDock({ activeModule, onSelectModule, lang, onOpenOrbit }
               key={item.id}
               type="button"
               onClick={() => onSelectModule(item.id)}
-              className={`relative flex flex-col items-center justify-center min-w-[2.85rem] sm:min-w-[3.4rem] py-1 px-1 rounded-2xl transition-all duration-100 group active:scale-90 ${
+              className={`relative flex flex-col items-center justify-center min-w-[2.85rem] sm:min-w-[3.4rem] py-1 px-1 rounded-2xl transition-transform duration-100 transition-colors duration-100 group active:scale-90 ${
                 isActive
                   ? 'liquid-glass-accent shadow-sm'
                   : 'hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400'
@@ -83,7 +83,7 @@ export function FloatingDock({ activeModule, onSelectModule, lang, onOpenOrbit }
               )}
 
               <div
-                className={`p-1 rounded-xl transition-all duration-100 ${
+                className={`p-1 rounded-xl transition-transform duration-100 ${
                   isActive
                     ? 'scale-110 -translate-y-0.5 text-white'
                     : `group-hover:scale-105 group-hover:-translate-y-0.5 ${item.color}`
