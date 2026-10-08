@@ -652,7 +652,7 @@ export const DashboardHome = React.memo(function DashboardHome({
               onMouseMove={isReordering ? undefined : handleMouseMove}
               onMouseUp={isReordering ? undefined : handleMouseUp}
               onClick={() => handleCardClick(tool.id)}
-              className={`group select-none rounded-2xl sm:rounded-3xl p-3 sm:p-4 liquid-glass-card liquid-specular transition-all duration-150 flex flex-col justify-between min-h-[92px] sm:min-h-[105px] animate-fade-in relative ${
+              className={`group select-none rounded-2xl sm:rounded-3xl p-3 sm:p-4 liquid-glass-card liquid-specular transition-all duration-150 transform-gpu flex flex-col justify-between min-h-[92px] sm:min-h-[105px] animate-fade-in relative ${
                 isReordering
                   ? 'cursor-grab active:cursor-grabbing border-amber-500/40 bg-amber-500/[0.04] ring-1 ring-amber-500/30 shadow-md'
                   : `cursor-pointer ${tool.borderColor} shadow-sm hover:shadow-xl ${tool.glowColor} hover:-translate-y-0.5 active:scale-[0.97]`

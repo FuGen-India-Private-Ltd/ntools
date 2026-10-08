@@ -25,6 +25,10 @@
     text-rendering: optimizeSpeed;
   }
 
+  html, body {
+    overscroll-behavior-y: contain;
+  }
+
   body {
     background-color: var(--app-bg);
     color: var(--app-text);
