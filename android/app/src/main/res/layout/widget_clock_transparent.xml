@@ -6,7 +6,7 @@
     android:background="@android:color/transparent"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="4dp">
+    android:padding="2dp">
 
     <TextClock
         android:id="@+id/widget_clock_trans_time"
@@ -15,7 +15,7 @@
         android:format12Hour="hh:mm"
         android:format24Hour="kk:mm"
         android:textColor="?android:attr/textColorPrimary"
-        android:textSize="40sp"
+        android:textSize="38sp"
         android:textStyle="bold"
         android:includeFontPadding="false"
         android:shadowColor="#99000000"
@@ -37,8 +37,9 @@
             android:format12Hour="a"
             android:format24Hour=""
             android:textColor="?android:attr/textColorPrimary"
-            android:textSize="11.5sp"
+            android:textSize="11sp"
             android:textStyle="bold"
+            android:includeFontPadding="false"
             android:shadowColor="#99000000"
             android:shadowDx="0"
             android:shadowDy="1"
@@ -52,8 +53,9 @@
             android:format12Hour="EEE, MMM d"
             android:format24Hour="EEE, MMM d"
             android:textColor="?android:attr/textColorPrimary"
-            android:textSize="11.5sp"
+            android:textSize="11sp"
             android:textStyle="bold"
+            android:includeFontPadding="false"
             android:shadowColor="#99000000"
             android:shadowDx="0"
             android:shadowDy="1"
