@@ -170,7 +170,9 @@ interface CircularArcNavigatorProps {
 
 // Spacing between icons and scrub sensitivity distance (balanced for smooth, non-jerky scrubbing)
 const ITEM_WIDTH = 56;
-const STEP_PX = 38; // 38px per tab change = smooth, deliberate control without runaway tab skipping
+const FIRST_SLIDE_THRESHOLD_PX = 34; // Distance to trigger initial tab transition on a single slide/swipe
+const CONTINUOUS_STEP_PX = 54;        // Additional distance required per subsequent tab during held continuous sliding
+const MIN_CONTINUOUS_STEP_INTERVAL_MS = 190; // Minimum elapsed time between tab switches during continuous sliding ("smoothness, not fastness")
 
 export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   activeModule,
@@ -198,8 +200,12 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
   const lastClientXRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const velocityXRef = useRef<number>(0);
-  const accumulatedDeltaRef = useRef<number>(0);
-  const stepsTakenRef = useRef<number>(0);
+
+  // Gesture pacing: differentiates a single slide/flick from continuous held sliding
+  const hasShiftedInitialTabRef = useRef(false);
+  const totalStepsShiftedRef = useRef<number>(0);
+  const lastStepTimeRef = useRef<number>(0);
+  const continuousAccumulatorRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
 
   // Keyboard detection
@@ -247,7 +253,7 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     } else {
       pendingCommitTimerRef.current = setTimeout(() => {
         onSelectModule(modId);
-      }, 85);
+      }, 90);
     }
   };
 
@@ -262,8 +268,10 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
     lastClientXRef.current = e.clientX;
     lastTimeRef.current = performance.now();
     velocityXRef.current = 0;
-    accumulatedDeltaRef.current = 0;
-    stepsTakenRef.current = 0;
+    hasShiftedInitialTabRef.current = false;
+    totalStepsShiftedRef.current = 0;
+    lastStepTimeRef.current = performance.now();
+    continuousAccumulatorRef.current = 0;
     setDragOffsetPx(0);
   };
 
@@ -284,37 +292,66 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
       } catch (_) {}
     }
 
-    // Continuous scrubbing: accumulate delta
-    accumulatedDeltaRef.current += dx;
-
-    // Check if scrub crossed forward threshold (moving finger left advances tabs forward)
-    if (accumulatedDeltaRef.current <= -STEP_PX) {
-      const steps = Math.floor(Math.abs(accumulatedDeltaRef.current) / STEP_PX);
-      if (steps > 0) {
-        accumulatedDeltaRef.current += steps * STEP_PX;
-        stepsTakenRef.current += steps;
-        const newIdx = (activeIdxRef.current + steps) % numItems;
+    // 1. Initial slide: exactly 1 tab transition per single slide stroke
+    if (!hasShiftedInitialTabRef.current) {
+      if (totalTravel <= -FIRST_SLIDE_THRESHOLD_PX) {
+        // Slide left: advance 1 tab forward
+        const newIdx = (activeIdxRef.current + 1) % numItems;
         activeIdxRef.current = newIdx;
-        const targetMod = ARC_ITEMS[newIdx].id;
-        commitModuleChange(targetMod, false);
+        totalStepsShiftedRef.current += 1;
+        hasShiftedInitialTabRef.current = true;
+        lastStepTimeRef.current = now;
+        continuousAccumulatorRef.current = 0;
+        commitModuleChange(ARC_ITEMS[newIdx].id, false);
+        if (navigator.vibrate) navigator.vibrate(10);
+      } else if (totalTravel >= FIRST_SLIDE_THRESHOLD_PX) {
+        // Slide right: retreat 1 tab backward
+        const newIdx = (activeIdxRef.current - 1 + numItems) % numItems;
+        activeIdxRef.current = newIdx;
+        totalStepsShiftedRef.current -= 1;
+        hasShiftedInitialTabRef.current = true;
+        lastStepTimeRef.current = now;
+        continuousAccumulatorRef.current = 0;
+        commitModuleChange(ARC_ITEMS[newIdx].id, false);
         if (navigator.vibrate) navigator.vibrate(10);
       }
-    } else if (accumulatedDeltaRef.current >= STEP_PX) {
-      const steps = Math.floor(accumulatedDeltaRef.current / STEP_PX);
-      if (steps > 0) {
-        accumulatedDeltaRef.current -= steps * STEP_PX;
-        stepsTakenRef.current += steps;
-        const newIdx = (activeIdxRef.current - steps + numItems * 100) % numItems;
+    } else {
+      // 2. Continuous sliding: held continuous dragging steps through multiple tabs smoothly
+      continuousAccumulatorRef.current += dx;
+      const elapsedSinceLastStep = now - lastStepTimeRef.current;
+
+      // Pacing: requires deliberate distance AND elapsed time interval for calm, smooth 120 FPS transitions
+      if (
+        continuousAccumulatorRef.current <= -CONTINUOUS_STEP_PX &&
+        elapsedSinceLastStep >= MIN_CONTINUOUS_STEP_INTERVAL_MS
+      ) {
+        const newIdx = (activeIdxRef.current + 1) % numItems;
         activeIdxRef.current = newIdx;
-        const targetMod = ARC_ITEMS[newIdx].id;
-        commitModuleChange(targetMod, false);
+        totalStepsShiftedRef.current += 1;
+        continuousAccumulatorRef.current = 0;
+        lastStepTimeRef.current = now;
+        commitModuleChange(ARC_ITEMS[newIdx].id, false);
+        if (navigator.vibrate) navigator.vibrate(10);
+      } else if (
+        continuousAccumulatorRef.current >= CONTINUOUS_STEP_PX &&
+        elapsedSinceLastStep >= MIN_CONTINUOUS_STEP_INTERVAL_MS
+      ) {
+        const newIdx = (activeIdxRef.current - 1 + numItems) % numItems;
+        activeIdxRef.current = newIdx;
+        totalStepsShiftedRef.current -= 1;
+        continuousAccumulatorRef.current = 0;
+        lastStepTimeRef.current = now;
+        commitModuleChange(ARC_ITEMS[newIdx].id, false);
         if (navigator.vibrate) navigator.vibrate(10);
       }
     }
 
+    // Direct 1:1 mathematical continuity: zero pop, zero snap-jumps across tab transitions
+    const continuousOffset = totalTravel + totalStepsShiftedRef.current * ITEM_WIDTH;
+
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
-      setDragOffsetPx(accumulatedDeltaRef.current * 0.8);
+      setDragOffsetPx(continuousOffset);
     });
   };
 
@@ -336,16 +373,15 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
 
     const totalTravel = e.clientX - startXRef.current;
 
-    // "one slide, one movement": If user performed a single swipe/flick without continuous holding
-    if (stepsTakenRef.current === 0) {
-      const isFlick = Math.abs(velocityXRef.current) > 0.28 || Math.abs(totalTravel) > 16;
+    // "one slide, one movement": If user performed a single flick/swipe without continuous holding
+    if (!hasShiftedInitialTabRef.current) {
+      const isFlick = Math.abs(velocityXRef.current) > 0.22 || Math.abs(totalTravel) > 14;
       if (isFlick) {
-        const step = (totalTravel < 0 || velocityXRef.current < -0.28) ? 1 : -1;
+        const step = totalTravel < 0 || velocityXRef.current < -0.22 ? 1 : -1;
         const newIdx = (activeIdxRef.current + step + numItems * 100) % numItems;
         activeIdxRef.current = newIdx;
-        const targetMod = ARC_ITEMS[newIdx].id;
-        commitModuleChange(targetMod, true);
-        if (navigator.vibrate) navigator.vibrate(12);
+        commitModuleChange(ARC_ITEMS[newIdx].id, true);
+        if (navigator.vibrate) navigator.vibrate(10);
         setDragOffsetPx(0);
         return;
       }
@@ -365,14 +401,26 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
           : 'opacity-100 translate-y-0'
       }`}
     >
-      {/* Sleek Obsidian Glass Sliding Dock (Pure Pitch Black, Zero Breathing Lights) */}
+      {/* Sleek Obsidian Glass Sliding Dock with Multi-Tone Luminous Glass Border */}
       <div
-        className="relative w-[300px] sm:w-[340px] h-[68px] px-3 rounded-[34px] liquid-glass-arc-dock flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl"
+        className="relative w-[304px] sm:w-[344px] h-[70px] px-3 rounded-[35px] liquid-glass-arc-dock flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl transition-all duration-300"
+        style={{
+          boxShadow: `0 20px 50px -10px rgba(0, 0, 0, 0.85), 0 0 24px -2px ${activeItem.glowHex}40, inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.38), inset 0 -1.5px 1.5px 0 rgba(0, 0, 0, 0.7)`,
+          borderColor: `${activeItem.glowHex}40`,
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
+        {/* Precision Specular Top Rim Catch */}
+        <div className="absolute top-0 left-6 right-6 h-[1.5px] bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none rounded-full z-30" />
+
+        {/* Precision Sub-Bevel Reflection */}
+        <div className="absolute top-[1.5px] left-12 right-12 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none rounded-full z-30" />
+
+        {/* Precision Bottom Shadow Edge */}
+        <div className="absolute bottom-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-black/50 to-transparent pointer-events-none rounded-full z-30" />
         {/* 1:1 Smooth Continuous Sliding Carousel */}
         {ARC_ITEMS.map((item, i) => {
           const Icon = item.icon;
@@ -415,27 +463,27 @@ export const CircularArcNavigator = React.memo(function CircularArcNavigator({
                 zIndex: isCenter ? 20 : isVisible ? 10 : 0,
                 transition: isDragging
                   ? 'none'
-                  : 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.16s ease-out',
+                  : 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.26s cubic-bezier(0.22, 1, 0.36, 1)',
               }}
               className="absolute top-1 flex flex-col items-center gap-1 select-none active:scale-95 cursor-pointer"
               title={label}
             >
               <div
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-150 border ${
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 border ${
                   isCenter
                     ? `bg-gradient-to-b ${item.accentGrad} text-white border-white/60 dark:border-white/40 shadow-[0_8px_20px_rgba(0,0,0,0.3),inset_0_1.5px_2px_rgba(255,255,255,0.7)]`
                     : 'bg-white/[0.07] dark:bg-white/[0.08] backdrop-blur-xl text-slate-300 dark:text-slate-300 hover:text-white hover:bg-white/15 border-white/10 shadow-sm'
                 }`}
               >
                 <Icon
-                  className={`w-5 h-5 transition-transform duration-150 ${
+                  className={`w-5 h-5 transition-transform duration-200 ${
                     isCenter ? 'scale-110 stroke-[2.4]' : 'scale-90 stroke-[2]'
                   }`}
                 />
               </div>
 
               <div
-                className={`flex items-center justify-center transition-opacity duration-150 ${
+                className={`flex items-center justify-center transition-opacity duration-200 ${
                   isCenter ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
               >

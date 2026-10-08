@@ -95,9 +95,9 @@ const TAB_ORDER: AppModule[] = [
   'calc',
   'calendar',
   'widgets',
-  'settings',
   'recorder',
   'compass',
+  'settings',
 ];
 
 export function App() {
